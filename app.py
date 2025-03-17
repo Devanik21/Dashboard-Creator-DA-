@@ -34,7 +34,14 @@ def download_button_altair(chart, filename):
         buf.seek(0)
         st.download_button(label="Download Chart as PNG", data=buf, file_name=filename, mime="image/png")
     except Exception as e:
-        st.error("Error saving chart: " + str(e))
+        if "No enabled saver found" in str(e):
+            st.warning(
+                "PNG export for Altair charts is not enabled. "
+                "To enable this feature, please install additional dependencies, e.g., run "
+                "`pip install altair_saver[selenium]` or set up Node.js with vega-lite."
+            )
+        else:
+            st.error("Error saving chart: " + str(e))
 
 if uploaded_file is not None:
     try:
@@ -82,7 +89,8 @@ if uploaded_file is not None:
                     alt.X(f"{col}:Q", bin=True),
                     y='count()',
                     tooltip=[col, 'count()']
-                ).properties(width=600, height=300, title=f"Histogram for {col}").configure_mark(color=color_scheme)
+                ).properties(width=600, height=300, title=f"Histogram for {col}") \
+                  .configure_mark(color=color_scheme)
                 st.altair_chart(hist_chart, use_container_width=True)
                 download_button_altair(hist_chart, f"{col}_histogram.png")
         else:
@@ -121,9 +129,12 @@ if uploaded_file is not None:
         # 4. Scatter Plot Matrix (Pairplot using Seaborn)
         if len(numeric_cols) > 1:
             st.subheader("Scatter Plot Matrix (Pairplot)")
-            pairplot = sns.pairplot(df[numeric_cols])
-            st.pyplot(pairplot.fig)
-            download_button_fig(pairplot.fig, "scatter_plot_matrix.png")
+            try:
+                pairplot = sns.pairplot(df[numeric_cols])
+                st.pyplot(pairplot.fig)
+                download_button_fig(pairplot.fig, "scatter_plot_matrix.png")
+            except Exception as e:
+                st.error("Error generating scatter plot matrix: " + str(e))
         else:
             st.write("Not enough numeric columns for a scatter plot matrix.")
 
@@ -198,8 +209,6 @@ if uploaded_file is not None:
         # 10. Save Dashboard Configuration
         config = {
             "color_scheme": color_scheme,
-            "selected_date": selected_date if date_cols and numeric_cols else None,
-            "selected_numeric": selected_numeric if date_cols and numeric_cols else None,
             "numeric_columns": numeric_cols,
             "categorical_columns": categorical_cols,
             "date_columns": date_cols,
