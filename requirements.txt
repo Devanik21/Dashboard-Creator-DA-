@@ -5,3 +5,10 @@ openpyxl
 altair_saver
 seaborn
 matplotlib
+numpy
+plotly
+scikit-learn
+statsmodels
+missingno
+networkx
+wordcloud
