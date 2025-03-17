@@ -2,3 +2,6 @@ streamlit
 pandas
 altair
 openpyxl
+altair_saver
+seaborn
+matplotlib
