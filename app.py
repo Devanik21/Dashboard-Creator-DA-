@@ -3,8 +3,6 @@ import pandas as pd
 import altair as alt
 import seaborn as sns
 import matplotlib.pyplot as plt
-from io import BytesIO
-import altair_saver
 import json
 
 st.set_page_config(layout="wide")
@@ -18,30 +16,6 @@ sns.set_palette(color_scheme)  # Use for seaborn plots
 
 # File uploader for CSV and Excel files
 uploaded_file = st.file_uploader("Choose a CSV or Excel file", type=["csv", "xlsx"])
-
-# Function to create a download button for Matplotlib figures
-def download_button_fig(fig, filename):
-    buf = BytesIO()
-    fig.savefig(buf, format="png", bbox_inches="tight")
-    buf.seek(0)
-    st.download_button(label="Download Chart as PNG", data=buf, file_name=filename, mime="image/png")
-
-# Function to create a download button for Altair charts
-def download_button_altair(chart, filename):
-    buf = BytesIO()
-    try:
-        altair_saver.save(chart, buf, fmt='png')
-        buf.seek(0)
-        st.download_button(label="Download Chart as PNG", data=buf, file_name=filename, mime="image/png")
-    except Exception as e:
-        if "No enabled saver found" in str(e):
-            st.warning(
-                "PNG export for Altair charts is not enabled. "
-                "To enable this feature, please install additional dependencies, e.g., run "
-                "`pip install altair_saver[selenium]` or set up Node.js with vega-lite."
-            )
-        else:
-            st.error("Error saving chart: " + str(e))
 
 if uploaded_file is not None:
     try:
@@ -92,7 +66,6 @@ if uploaded_file is not None:
                 ).properties(width=600, height=300, title=f"Histogram for {col}") \
                   .configure_mark(color=color_scheme)
                 st.altair_chart(hist_chart, use_container_width=True)
-                download_button_altair(hist_chart, f"{col}_histogram.png")
         else:
             st.write("No numeric columns found for histograms.")
 
@@ -107,7 +80,6 @@ if uploaded_file is not None:
                     tooltip=[col, 'count()']
                 ).properties(width=600, height=300, title=f"Bar Chart for {col}")
                 st.altair_chart(bar_chart, use_container_width=True)
-                download_button_altair(bar_chart, f"{col}_barchart.png")
         else:
             st.write("No categorical columns found for bar charts.")
 
@@ -122,7 +94,6 @@ if uploaded_file is not None:
                 color=alt.Color('value:Q', scale=alt.Scale(scheme=color_scheme))
             ).properties(width=600, height=400, title="Correlation Heatmap")
             st.altair_chart(heatmap, use_container_width=True)
-            download_button_altair(heatmap, "correlation_heatmap.png")
         else:
             st.write("Not enough numeric columns for a correlation heatmap.")
 
@@ -132,7 +103,6 @@ if uploaded_file is not None:
             try:
                 pairplot = sns.pairplot(df[numeric_cols])
                 st.pyplot(pairplot.fig)
-                download_button_fig(pairplot.fig, "scatter_plot_matrix.png")
             except Exception as e:
                 st.error("Error generating scatter plot matrix: " + str(e))
         else:
@@ -147,7 +117,6 @@ if uploaded_file is not None:
                 sns.boxplot(y=df[col], ax=ax)
                 ax.set_title(f"Box Plot for {col}")
                 st.pyplot(fig)
-                download_button_fig(fig, f"{col}_boxplot.png")
         else:
             st.write("No numeric columns available for box plots.")
 
@@ -163,7 +132,6 @@ if uploaded_file is not None:
                 tooltip=[selected_date, selected_numeric]
             ).properties(width=600, height=300, title=f"Time Series of {selected_numeric} over {selected_date}")
             st.altair_chart(time_chart, use_container_width=True)
-            download_button_altair(time_chart, f"time_series_{selected_numeric}.png")
         else:
             st.write("Time series analysis not applicable (need at least one date and one numeric column).")
 
