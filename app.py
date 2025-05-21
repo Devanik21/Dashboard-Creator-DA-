@@ -10,6 +10,7 @@ import plotly.graph_objects as go
 from sklearn.cluster import KMeans
 from sklearn.ensemble import IsolationForest
 from sklearn.preprocessing import OneHotEncoder
+import plotly.figure_factory as ff
 import folium
 from streamlit_folium import folium_static
 import google.generativeai as genai
