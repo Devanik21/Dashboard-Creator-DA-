@@ -8,7 +8,6 @@ import json
 import plotly.express as px
 import plotly.graph_objects as go
 from sklearn.cluster import KMeans
-from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import IsolationForest
 from sklearn.preprocessing import OneHotEncoder
 import folium
@@ -38,7 +37,7 @@ custom_color = st.sidebar.color_picker("🎨 Custom Color", "#1f77b4")
 # Gemini API Integration
 st.sidebar.header("🧠 AI Insights")
 gemini_api_key = st.sidebar.text_input("Gemini API Key", type="password")
-gemini_model = "gemini-1.5-flash"
+gemini_model = "gemini-2.0-flash"
 if gemini_api_key:
     try:
         genai.configure(api_key=gemini_api_key)
