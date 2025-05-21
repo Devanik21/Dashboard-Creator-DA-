@@ -12,3 +12,6 @@ statsmodels
 missingno
 networkx
 wordcloud
+folium
+streamlit-folium
+google-generativeai
