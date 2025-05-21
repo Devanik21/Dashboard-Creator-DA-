@@ -141,24 +141,75 @@ if uploaded_file is not None:
             
             chart_type = st.selectbox("Select Chart Type", options=[
                 "Bar Chart", "Line Chart", "Scatter Plot", "Histogram", 
-                "Box Plot", "Pie Chart", "Treemap", "Heatmap"
+                "Box Plot", "Pie Chart", "Treemap", "Heatmap",
+                "Area Chart", "Violin Plot", "Density Plot", "Sunburst Chart",
+                "Radar Chart", "Bubble Chart", "Waterfall Chart", "Candlestick Chart",
+                "Funnel Chart", "3D Scatter", "Parallel Coordinates", "Ridgeline Plot",
+                "Sankey Diagram", "Contour Plot", "Hexbin Plot", "Gauge Chart",
+                "Bullet Chart", "Strip Plot", "ECDF Plot", "Donut Chart"
             ])
             
             col1, col2 = st.columns(2)
             
             with col1:
-                if chart_type in ["Bar Chart", "Line Chart", "Scatter Plot", "Box Plot"]:
+                if chart_type in ["Bar Chart", "Line Chart", "Scatter Plot", "Box Plot", "Area Chart", "Strip Plot"]:
                     x_axis = st.selectbox("X-Axis", options=df.columns)
                     y_axis = st.selectbox("Y-Axis", options=numeric_cols if numeric_cols else df.columns)
                     color_by = st.selectbox("Color By (Optional)", options=["None"] + categorical_cols)
-                elif chart_type in ["Histogram"]:
+                elif chart_type in ["Histogram", "Density Plot", "ECDF Plot"]:
                     x_axis = st.selectbox("Select Column", options=numeric_cols if numeric_cols else df.columns)
                     bins = st.slider("Number of Bins", min_value=5, max_value=100, value=20)
-                elif chart_type in ["Pie Chart", "Treemap"]:
+                elif chart_type in ["Pie Chart", "Treemap", "Funnel Chart", "Sunburst Chart", "Donut Chart"]:
                     labels = st.selectbox("Labels", options=categorical_cols if categorical_cols else df.columns)
                     values = st.selectbox("Values", options=numeric_cols if numeric_cols else df.columns)
                 elif chart_type == "Heatmap":
                     corr_method = st.selectbox("Correlation Method", options=["pearson", "kendall", "spearman"])
+                elif chart_type == "Violin Plot":
+                    x_axis = st.selectbox("Category", options=categorical_cols if categorical_cols else df.columns)
+                    y_axis = st.selectbox("Value", options=numeric_cols if numeric_cols else df.columns)
+                elif chart_type == "Radar Chart":
+                    categories = st.multiselect("Categories", options=numeric_cols, default=numeric_cols[:min(5, len(numeric_cols))])
+                    group_by = st.selectbox("Group By", options=["None"] + categorical_cols)
+                elif chart_type == "Bubble Chart":
+                    x_axis = st.selectbox("X-Axis", options=numeric_cols if numeric_cols else df.columns)
+                    y_axis = st.selectbox("Y-Axis", options=numeric_cols if numeric_cols else df.columns)
+                    size = st.selectbox("Size", options=numeric_cols if numeric_cols else df.columns)
+                    color_by = st.selectbox("Color By", options=["None"] + categorical_cols)
+                elif chart_type == "Waterfall Chart":
+                    measure = st.selectbox("Measure", options=numeric_cols if numeric_cols else df.columns)
+                    category = st.selectbox("Category", options=categorical_cols if categorical_cols else df.columns)
+                elif chart_type == "Candlestick Chart":
+                    date_col = st.selectbox("Date", options=date_cols if date_cols else df.columns)
+                    open_col = st.selectbox("Open", options=numeric_cols if numeric_cols else df.columns)
+                    high_col = st.selectbox("High", options=numeric_cols if numeric_cols else df.columns)
+                    low_col = st.selectbox("Low", options=numeric_cols if numeric_cols else df.columns)
+                    close_col = st.selectbox("Close", options=numeric_cols if numeric_cols else df.columns)
+                elif chart_type == "3D Scatter":
+                    x_axis = st.selectbox("X-Axis", options=numeric_cols if numeric_cols else df.columns)
+                    y_axis = st.selectbox("Y-Axis", options=numeric_cols if numeric_cols else df.columns)
+                    z_axis = st.selectbox("Z-Axis", options=numeric_cols if numeric_cols else df.columns)
+                    color_by = st.selectbox("Color By", options=["None"] + categorical_cols)
+                elif chart_type == "Parallel Coordinates":
+                    dimensions = st.multiselect("Dimensions", options=numeric_cols, default=numeric_cols[:min(5, len(numeric_cols))])
+                    color_by = st.selectbox("Color By", options=["None"] + categorical_cols)
+                elif chart_type == "Ridgeline Plot":
+                    value_col = st.selectbox("Value Column", options=numeric_cols if numeric_cols else df.columns)
+                    group_col = st.selectbox("Group By", options=categorical_cols if categorical_cols else df.columns)
+                elif chart_type == "Sankey Diagram":
+                    source_col = st.selectbox("Source", options=categorical_cols if categorical_cols else df.columns)
+                    target_col = st.selectbox("Target", options=categorical_cols if categorical_cols else df.columns)
+                    value_col = st.selectbox("Value", options=numeric_cols if numeric_cols else df.columns)
+                elif chart_type == "Contour Plot":
+                    x_axis = st.selectbox("X-Axis", options=numeric_cols if numeric_cols else df.columns)
+                    y_axis = st.selectbox("Y-Axis", options=numeric_cols if numeric_cols else df.columns)
+                    z_axis = st.selectbox("Z-Axis (Value)", options=numeric_cols if numeric_cols else df.columns)
+                elif chart_type == "Hexbin Plot":
+                    x_axis = st.selectbox("X-Axis", options=numeric_cols if numeric_cols else df.columns)
+                    y_axis = st.selectbox("Y-Axis", options=numeric_cols if numeric_cols else df.columns)
+                    bins = st.slider("Number of Hexagons", min_value=5, max_value=50, value=20)
+                elif chart_type in ["Gauge Chart", "Bullet Chart"]:
+                    value_col = st.selectbox("Value", options=numeric_cols if numeric_cols else df.columns)
+                    max_value = st.number_input("Maximum Value", value=float(df[numeric_cols[0]].max() if numeric_cols else 100))
             
             with col2:
                 width = st.slider("Chart Width", min_value=400, max_value=1200, value=700)
@@ -221,6 +272,310 @@ if uploaded_file is not None:
                     st.plotly_chart(fig)
                 else:
                     st.error("Need at least 2 numeric columns for correlation heatmap")
+            
+            elif chart_type == "Area Chart":
+                if color_by != "None":
+                    fig = px.area(df, x=x_axis, y=y_axis, color=color_by, width=width, height=height,
+                                 log_y=log_scale, title=f"Area Chart: {y_axis} by {x_axis}")
+                else:
+                    fig = px.area(df, x=x_axis, y=y_axis, width=width, height=height,
+                                 log_y=log_scale, title=f"Area Chart: {y_axis} by {x_axis}")
+                st.plotly_chart(fig)
+            
+            elif chart_type == "Violin Plot":
+                fig = px.violin(df, x=x_axis, y=y_axis, box=True, points="all", width=width, height=height,
+                               log_y=log_scale, title=f"Violin Plot: {y_axis} by {x_axis}")
+                st.plotly_chart(fig)
+            
+            elif chart_type == "Density Plot":
+                fig = ff.create_distplot([df[x_axis].dropna()], [x_axis], bin_size=bins/100, show_rug=True)
+                fig.update_layout(width=width, height=height, title=f"Density Plot of {x_axis}")
+                st.plotly_chart(fig)
+            
+            elif chart_type == "Sunburst Chart":
+                fig = px.sunburst(df, path=[labels], values=values, width=width, height=height,
+                                 title=f"Sunburst Chart: {values} by {labels}")
+                st.plotly_chart(fig)
+            
+            elif chart_type == "Radar Chart":
+                if group_by != "None" and categories:
+                    # Create radar chart for each group
+                    data = []
+                    for group in df[group_by].unique():
+                        group_data = df[df[group_by] == group]
+                        values = [group_data[cat].mean() for cat in categories]
+                        data.append(go.Scatterpolar(
+                            r=values,
+                            theta=categories,
+                            fill='toself',
+                            name=str(group)
+                        ))
+                    
+                    fig = go.Figure(data=data)
+                    fig.update_layout(
+                        polar=dict(radialaxis=dict(visible=True)),
+                        width=width, height=height,
+                        title=f"Radar Chart by {group_by}"
+                    )
+                elif categories:
+                    # Create single radar chart
+                    values = [df[cat].mean() for cat in categories]
+                    fig = go.Figure(go.Scatterpolar(
+                        r=values,
+                        theta=categories,
+                        fill='toself'
+                    ))
+                    fig.update_layout(
+                        polar=dict(radialaxis=dict(visible=True)),
+                        width=width, height=height,
+                        title=f"Radar Chart"
+                    )
+                st.plotly_chart(fig)
+            
+            elif chart_type == "Bubble Chart":
+                if color_by != "None":
+                    fig = px.scatter(df, x=x_axis, y=y_axis, size=size, color=color_by,
+                                    width=width, height=height, log_y=log_scale,
+                                    title=f"Bubble Chart: {y_axis} vs {x_axis} (sized by {size})")
+                else:
+                    fig = px.scatter(df, x=x_axis, y=y_axis, size=size,
+                                    width=width, height=height, log_y=log_scale,
+                                    title=f"Bubble Chart: {y_axis} vs {x_axis} (sized by {size})")
+                st.plotly_chart(fig)
+            
+            elif chart_type == "Waterfall Chart":
+                # Prepare data for waterfall chart
+                measure_values = ["relative"] * len(df)
+                measure_values[0] = "absolute"  # First value is the starting point
+                measure_values[-1] = "total"    # Last value is the total
+                
+                fig = go.Figure(go.Waterfall(
+                    name="Waterfall Chart",
+                    orientation="v",
+                    measure=measure_values,
+                    x=df[category],
+                    y=df[measure],
+                    connector={"line": {"color": "rgb(63, 63, 63)"}},
+                ))
+                
+                fig.update_layout(
+                    title=f"Waterfall Chart: {measure} by {category}",
+                    width=width, height=height
+                )
+                st.plotly_chart(fig)
+            
+            elif chart_type == "Candlestick Chart":
+                fig = go.Figure(data=[go.Candlestick(
+                    x=df[date_col],
+                    open=df[open_col],
+                    high=df[high_col],
+                    low=df[low_col],
+                    close=df[close_col]
+                )])
+                
+                fig.update_layout(
+                    title=f"Candlestick Chart",
+                    width=width, height=height,
+                    xaxis_title=date_col,
+                    yaxis_title="Price"
+                )
+                st.plotly_chart(fig)
+            
+            elif chart_type == "Funnel Chart":
+                values_ordered = df.groupby(labels)[values].sum().reset_index()
+                values_ordered = values_ordered.sort_values(by=values, ascending=False)
+                
+                fig = go.Figure(go.Funnel(
+                    y=values_ordered[labels],
+                    x=values_ordered[values],
+                    textinfo="value+percent initial"
+                ))
+                
+                fig.update_layout(
+                    title=f"Funnel Chart: {values} by {labels}",
+                    width=width, height=height
+                )
+                st.plotly_chart(fig)
+            
+            elif chart_type == "3D Scatter":
+                if color_by != "None":
+                    fig = px.scatter_3d(df, x=x_axis, y=y_axis, z=z_axis, color=color_by,
+                                       width=width, height=height,
+                                       title=f"3D Scatter Plot: {x_axis}, {y_axis}, {z_axis}")
+                else:
+                    fig = px.scatter_3d(df, x=x_axis, y=y_axis, z=z_axis,
+                                       width=width, height=height,
+                                       title=f"3D Scatter Plot: {x_axis}, {y_axis}, {z_axis}")
+                st.plotly_chart(fig)
+            
+            elif chart_type == "Parallel Coordinates":
+                if color_by != "None" and dimensions:
+                    fig = px.parallel_coordinates(df, dimensions=dimensions, color=color_by,
+                                                width=width, height=height,
+                                                title=f"Parallel Coordinates Plot (colored by {color_by})")
+                elif dimensions:
+                    fig = px.parallel_coordinates(df, dimensions=dimensions,
+                                                width=width, height=height,
+                                                title="Parallel Coordinates Plot")
+                st.plotly_chart(fig)
+            
+            elif chart_type == "Ridgeline Plot":
+                # Create ridgeline plot using Plotly
+                fig = go.Figure()
+                
+                groups = df[group_col].unique()
+                for i, group in enumerate(groups):
+                    df_group = df[df[group_col] == group]
+                    
+                    # Create kernel density estimate
+                    kde_x = np.linspace(df[value_col].min(), df[value_col].max(), 100)
+                    kde_y = stats.gaussian_kde(df_group[value_col].dropna())(kde_x)
+                    
+                    # Scale and offset the densities for display
+                    offset = i / len(groups) * 1.5
+                    kde_y = kde_y / kde_y.max() * 0.5 + offset
+                    
+                    fig.add_trace(go.Scatter(
+                        x=kde_x, y=kde_y,
+                        fill='tozeroy', name=str(group),
+                        line=dict(width=1)
+                    ))
+                
+                fig.update_layout(
+                    title=f"Ridgeline Plot: {value_col} by {group_col}",
+                    width=width, height=height,
+                    xaxis_title=value_col,
+                    yaxis_title=group_col,
+                    yaxis_showticklabels=False
+                )
+                st.plotly_chart(fig)
+            
+            elif chart_type == "Sankey Diagram":
+                # Prepare data for Sankey diagram
+                source_target_values = df.groupby([source_col, target_col])[value_col].sum().reset_index()
+                
+                # Map categorical values to integers
+                source_labels = source_target_values[source_col].unique()
+                target_labels = source_target_values[target_col].unique()
+                all_labels = list(set(source_labels) | set(target_labels))
+                label_to_idx = {label: i for i, label in enumerate(all_labels)}
+                
+                # Create Sankey data
+                fig = go.Figure(data=[go.Sankey(
+                    node=dict(
+                        pad=15,
+                        thickness=20,
+                        line=dict(color="black", width=0.5),
+                        label=all_labels
+                    ),
+                    link=dict(
+                        source=[label_to_idx[source] for source in source_target_values[source_col]],
+                        target=[label_to_idx[target] for target in source_target_values[target_col]],
+                        value=source_target_values[value_col]
+                    )
+                )])
+                
+                fig.update_layout(
+                    title=f"Sankey Diagram: {source_col} to {target_col} weighted by {value_col}",
+                    width=width, height=height
+                )
+                st.plotly_chart(fig)
+            
+            elif chart_type == "Contour Plot":
+                fig = go.Figure(data=go.Contour(
+                    z=df.pivot_table(index=y_axis, columns=x_axis, values=z_axis).values,
+                    x=df[x_axis].unique(),
+                    y=df[y_axis].unique(),
+                    colorscale=color_scheme
+                ))
+                
+                fig.update_layout(
+                    title=f"Contour Plot: {z_axis} by {x_axis} and {y_axis}",
+                    width=width, height=height,
+                    xaxis_title=x_axis,
+                    yaxis_title=y_axis
+                )
+                st.plotly_chart(fig)
+            
+            elif chart_type == "Hexbin Plot":
+                fig = px.density_heatmap(df, x=x_axis, y=y_axis, nbinsx=bins, nbinsy=bins,
+                                        width=width, height=height, marginal_x="histogram", marginal_y="histogram",
+                                        title=f"Hexbin Plot: {y_axis} vs {x_axis}")
+                st.plotly_chart(fig)
+            
+            elif chart_type == "Gauge Chart":
+                # Create gauge chart
+                fig = go.Figure(go.Indicator(
+                    mode="gauge+number",
+                    value=df[value_col].mean(),
+                    title={"text": f"{value_col}"},
+                    gauge={
+                        "axis": {"range": [None, max_value]},
+                        "bar": {"color": custom_color},
+                        "steps": [
+                            {"range": [0, max_value/2], "color": "lightgray"},
+                            {"range": [max_value/2, max_value], "color": "gray"}
+                        ]
+                    }
+                ))
+                
+                fig.update_layout(
+                    width=width, height=height,
+                    title=f"Gauge Chart: Average {value_col}"
+                )
+                st.plotly_chart(fig)
+            
+            elif chart_type == "Bullet Chart":
+                # Create bullet chart
+                current_val = df[value_col].mean()
+                target_val = current_val * 1.2  # Example target (20% increase)
+                
+                fig = go.Figure(go.Indicator(
+                    mode="number+gauge+delta",
+                    gauge={"shape": "bullet", "axis": {"range": [None, max_value]}},
+                    value=current_val,
+                    delta={"reference": target_val},
+                    domain={"x": [0.1, 1], "y": [0.2, 0.9]},
+                    title={"text": f"{value_col}"}
+                ))
+                
+                fig.update_layout(
+                    width=width, height=height,
+                    title=f"Bullet Chart: {value_col}"
+                )
+                st.plotly_chart(fig)
+            
+            elif chart_type == "Strip Plot":
+                fig = px.strip(df, x=x_axis, y=y_axis, color=color_by if color_by != "None" else None,
+                              width=width, height=height, log_y=log_scale,
+                              title=f"Strip Plot: {y_axis} by {x_axis}")
+                st.plotly_chart(fig)
+            
+            elif chart_type == "ECDF Plot":
+                # Create empirical cumulative distribution function
+                x_sorted = np.sort(df[x_axis].dropna())
+                y = np.arange(1, len(x_sorted)+1) / len(x_sorted)
+                
+                fig = go.Figure(go.Scatter(
+                    x=x_sorted, y=y,
+                    mode='lines',
+                    line=dict(color=custom_color),
+                    name="ECDF"
+                ))
+                
+                fig.update_layout(
+                    title=f"Empirical Cumulative Distribution of {x_axis}",
+                    xaxis_title=x_axis,
+                    yaxis_title="Cumulative Probability",
+                    width=width, height=height
+                )
+                st.plotly_chart(fig)
+            
+            elif chart_type == "Donut Chart":
+                fig = px.pie(df, names=labels, values=values, hole=0.4,
+                            width=width, height=height,
+                            title=f"Donut Chart: {values} by {labels}")
+                st.plotly_chart(fig)
 
         # Geospatial visualization
         if has_geo_data:
