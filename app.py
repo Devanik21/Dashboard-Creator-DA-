@@ -293,13 +293,7 @@ if uploaded_file is not None:
                 if data_for_density.empty:
                     st.warning(f"No data available for column '{x_axis}' to generate a density plot.")
                     fig = go.Figure() # Create an empty figure to avoid further errors
-                else:
-                    # Let create_distplot determine bin_size automatically.
-                    # This avoids the TypeError caused by bin_size=bins/100.
-                    # The 'bins' slider will not directly affect this plot's binning.
-                    fig = ff.create_distplot([data_for_density], [x_axis], show_rug=True)
-                fig.update_layout(width=width, height=height, title=f"Density Plot of {x_axis} (auto bin size)")
-                st.plotly_chart(fig)
+
             
             elif chart_type == "Sunburst Chart":
                 fig = px.sunburst(df, path=[labels], values=values, width=width, height=height,
