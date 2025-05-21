@@ -236,56 +236,56 @@ if uploaded_file is not None:
 
 
             elif chart_type == "Area Chart":
-                x_axis = st.selectbox("X-Axis", options=df.columns)
-                y_axis = st.selectbox("Y-Axis", options=numeric_cols if numeric_cols else df.columns)
-                color_by = st.selectbox("Color By (Optional)", options=["None"] + categorical_cols)
+                x_axis = st.selectbox("X-Axis", options=df.columns, key="area_x")
+                y_axis = st.selectbox("Y-Axis", options=numeric_cols if numeric_cols else df.columns, key="area_y")
+                color_by = st.selectbox("Color By (Optional)", options=["None"] + categorical_cols, key="area_color")
 
             elif chart_type == "Bubble Chart":
-                x_axis = st.selectbox("X-Axis", options=numeric_cols)
-                y_axis = st.selectbox("Y-Axis", options=numeric_cols)
-                size = st.selectbox("Bubble Size", options=numeric_cols)
-                color_by = st.selectbox("Color By (Optional)", options=["None"] + categorical_cols)
+                x_axis = st.selectbox("X-Axis", options=numeric_cols, key="bubble_x")
+                y_axis = st.selectbox("Y-Axis", options=numeric_cols, key="bubble_y")
+                size = st.selectbox("Bubble Size", options=numeric_cols, key="bubble_size")
+                color_by = st.selectbox("Color By (Optional)", options=["None"] + categorical_cols, key="bubble_color")
 
             elif chart_type == "Radar Chart":
-                category_col = st.selectbox("Category Column", options=categorical_cols)
-                value_cols = st.multiselect("Value Columns", options=numeric_cols)
+                category_col = st.selectbox("Category Column", options=categorical_cols, key="radar_category")
+                value_cols = st.multiselect("Value Columns", options=numeric_cols, key="radar_values")
                 if len(value_cols) < 3:
                     st.warning("Select at least 3 value columns for a meaningful radar chart.")
 
             elif chart_type == "Donut Chart":
-                labels = st.selectbox("Labels", options=categorical_cols if categorical_cols else df.columns)
-                values = st.selectbox("Values", options=numeric_cols if numeric_cols else df.columns)
-                hole_size = st.slider("Donut Hole Size", 0.1, 0.9, 0.5)
+                labels = st.selectbox("Labels", options=categorical_cols if categorical_cols else df.columns, key="donut_labels")
+                values = st.selectbox("Values", options=numeric_cols if numeric_cols else df.columns, key="donut_values")
+                hole_size = st.slider("Donut Hole Size", 0.1, 0.9, 0.5, key="donut_hole")
 
             elif chart_type == "Violin Plot":
-                y_axis = st.selectbox("Y-Axis", options=numeric_cols)
-                x_axis = st.selectbox("X-Axis (Optional)", options=["None"] + categorical_cols)
-                color_by = st.selectbox("Color By (Optional)", options=["None"] + categorical_cols)
+                y_axis = st.selectbox("Y-Axis", options=numeric_cols, key="violin_y")
+                x_axis = st.selectbox("X-Axis (Optional)", options=["None"] + categorical_cols, key="violin_x")
+                color_by = st.selectbox("Color By (Optional)", options=["None"] + categorical_cols, key="violin_color")
 
             elif chart_type == "Waterfall Chart":
-                measure = st.selectbox("Measure Column", options=categorical_cols)
-                values = st.selectbox("Values", options=numeric_cols)
-                base = st.number_input("Initial Value", value=0)
+                measure = st.selectbox("Measure Column", options=categorical_cols, key="waterfall_measure")
+                values = st.selectbox("Values", options=numeric_cols, key="waterfall_values")
+                base = st.number_input("Initial Value", value=0, key="waterfall_base")
 
             elif chart_type == "Sunburst Chart":
-                path_cols = st.multiselect("Hierarchy Path (2+ Columns)", options=categorical_cols)
-                values = st.selectbox("Values", options=numeric_cols if numeric_cols else df.columns)
+                path_cols = st.multiselect("Hierarchy Path (2+ Columns)", options=categorical_cols, key="sunburst_path")
+                values = st.selectbox("Values", options=numeric_cols if numeric_cols else df.columns, key="sunburst_values")
 
             elif chart_type == "Sankey Diagram":
-                source = st.selectbox("Source", options=categorical_cols)
-                target = st.selectbox("Target", options=[col for col in categorical_cols if col != source])
-                value = st.selectbox("Value", options=numeric_cols)
+                source = st.selectbox("Source", options=categorical_cols, key="sankey_source")
+                target = st.selectbox("Target", options=[col for col in categorical_cols if col != source], key="sankey_target")
+                value = st.selectbox("Value", options=numeric_cols, key="sankey_value")
 
             elif chart_type == "Parallel Coordinates Plot":
-                dimensions = st.multiselect("Select Dimensions", options=numeric_cols)
-                color_by = st.selectbox("Color By (Optional)", options=["None"] + categorical_cols)
+                dimensions = st.multiselect("Select Dimensions", options=numeric_cols, key="parallel_dims")
+                color_by = st.selectbox("Color By (Optional)", options=["None"] + categorical_cols, key="parallel_color")
 
             elif chart_type == "Candlestick Chart":
-                date_col = st.selectbox("Date Column", options=df.columns)
-                open_col = st.selectbox("Open", options=numeric_cols)
-                high_col = st.selectbox("High", options=numeric_cols)
-                low_col = st.selectbox("Low", options=numeric_cols)
-                close_col = st.selectbox("Close", options=numeric_cols)
+                date_col = st.selectbox("Date Column", options=df.columns, key="candle_date")
+                open_col = st.selectbox("Open", options=numeric_cols, key="candle_open")
+                high_col = st.selectbox("High", options=numeric_cols, key="candle_high")
+                low_col = st.selectbox("Low", options=numeric_cols, key="candle_low")
+                close_col = st.selectbox("Close", options=numeric_cols, key="candle_close")
 
     
             elif chart_type == "Heatmap":
