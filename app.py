@@ -141,24 +141,41 @@ if uploaded_file is not None:
             
             chart_type = st.selectbox("Select Chart Type", options=[
                 "Bar Chart", "Line Chart", "Scatter Plot", "Histogram", 
-                "Box Plot", "Pie Chart", "Treemap", "Heatmap"
+                "Box Plot", "Pie Chart", "Treemap", "Heatmap","Area Chart", "Bubble Chart", "Radar Chart", "Donut Chart", "Violin Plot", "Waterfall Chart", "Sunburst Chart", "Sankey Diagram", "Parallel Coordinates Plot", "Candlestick Chart"
+
             ])
             
             col1, col2 = st.columns(2)
             
             with col1:
-                if chart_type in ["Bar Chart", "Line Chart", "Scatter Plot", "Box Plot"]:
+                if chart_type in ["Bar Chart", "Line Chart", "Scatter Plot", "Box Plot", "Area Chart", "Bubble Chart", "Radar Chart"]:
                     x_axis = st.selectbox("X-Axis", options=df.columns)
                     y_axis = st.selectbox("Y-Axis", options=numeric_cols if numeric_cols else df.columns)
                     color_by = st.selectbox("Color By (Optional)", options=["None"] + categorical_cols)
-                elif chart_type in ["Histogram"]:
+                elif chart_type in ["Histogram", "Violin Plot"]:
                     x_axis = st.selectbox("Select Column", options=numeric_cols if numeric_cols else df.columns)
                     bins = st.slider("Number of Bins", min_value=5, max_value=100, value=20)
-                elif chart_type in ["Pie Chart", "Treemap"]:
+                elif chart_type in ["Pie Chart", "Treemap", "Donut Chart", "Sunburst Chart"]:
                     labels = st.selectbox("Labels", options=categorical_cols if categorical_cols else df.columns)
                     values = st.selectbox("Values", options=numeric_cols if numeric_cols else df.columns)
                 elif chart_type == "Heatmap":
                     corr_method = st.selectbox("Correlation Method", options=["pearson", "kendall", "spearman"])
+                elif chart_type == "Waterfall Chart":
+                    categories = st.selectbox("Categories", options=categorical_cols if categorical_cols else df.columns)
+                    values = st.selectbox("Values", options=numeric_cols if numeric_cols else df.columns)
+                elif chart_type == "Sankey Diagram":
+                    source = st.selectbox("Source", options=categorical_cols if categorical_cols else df.columns)
+                    target = st.selectbox("Target", options=categorical_cols if categorical_cols else df.columns)
+                    value = st.selectbox("Value", options=numeric_cols if numeric_cols else df.columns)
+                elif chart_type == "Parallel Coordinates Plot":
+                    dimensions = st.multiselect("Select Dimensions", options=numeric_cols if numeric_cols else df.columns)
+                elif chart_type == "Candlestick Chart":
+                    date_col = st.selectbox("Date Column", options=df.columns)
+                    open_col = st.selectbox("Open", options=numeric_cols if numeric_cols else df.columns)
+                    high_col = st.selectbox("High", options=numeric_cols if numeric_cols else df.columns)
+                    low_col = st.selectbox("Low", options=numeric_cols if numeric_cols else df.columns)
+                    close_col = st.selectbox("Close", options=numeric_cols if numeric_cols else df.columns)
+
             
             with col2:
                 width = st.slider("Chart Width", min_value=400, max_value=1200, value=700)
@@ -212,7 +229,65 @@ if uploaded_file is not None:
                 fig = px.treemap(df, path=[labels], values=values, width=width, height=height,
                                 title=f"Treemap: {values} by {labels}")
                 st.plotly_chart(fig)
-            
+                
+
+
+
+
+
+                        elif chart_type == "Area Chart":
+                x_axis = st.selectbox("X-Axis", options=df.columns)
+                y_axis = st.selectbox("Y-Axis", options=numeric_cols if numeric_cols else df.columns)
+                color_by = st.selectbox("Color By (Optional)", options=["None"] + categorical_cols)
+
+            elif chart_type == "Bubble Chart":
+                x_axis = st.selectbox("X-Axis", options=numeric_cols)
+                y_axis = st.selectbox("Y-Axis", options=numeric_cols)
+                size = st.selectbox("Bubble Size", options=numeric_cols)
+                color_by = st.selectbox("Color By (Optional)", options=["None"] + categorical_cols)
+
+            elif chart_type == "Radar Chart":
+                category_col = st.selectbox("Category Column", options=categorical_cols)
+                value_cols = st.multiselect("Value Columns", options=numeric_cols)
+                if len(value_cols) < 3:
+                    st.warning("Select at least 3 value columns for a meaningful radar chart.")
+
+            elif chart_type == "Donut Chart":
+                labels = st.selectbox("Labels", options=categorical_cols if categorical_cols else df.columns)
+                values = st.selectbox("Values", options=numeric_cols if numeric_cols else df.columns)
+                hole_size = st.slider("Donut Hole Size", 0.1, 0.9, 0.5)
+
+            elif chart_type == "Violin Plot":
+                y_axis = st.selectbox("Y-Axis", options=numeric_cols)
+                x_axis = st.selectbox("X-Axis (Optional)", options=["None"] + categorical_cols)
+                color_by = st.selectbox("Color By (Optional)", options=["None"] + categorical_cols)
+
+            elif chart_type == "Waterfall Chart":
+                measure = st.selectbox("Measure Column", options=categorical_cols)
+                values = st.selectbox("Values", options=numeric_cols)
+                base = st.number_input("Initial Value", value=0)
+
+            elif chart_type == "Sunburst Chart":
+                path_cols = st.multiselect("Hierarchy Path (2+ Columns)", options=categorical_cols)
+                values = st.selectbox("Values", options=numeric_cols if numeric_cols else df.columns)
+
+            elif chart_type == "Sankey Diagram":
+                source = st.selectbox("Source", options=categorical_cols)
+                target = st.selectbox("Target", options=[col for col in categorical_cols if col != source])
+                value = st.selectbox("Value", options=numeric_cols)
+
+            elif chart_type == "Parallel Coordinates Plot":
+                dimensions = st.multiselect("Select Dimensions", options=numeric_cols)
+                color_by = st.selectbox("Color By (Optional)", options=["None"] + categorical_cols)
+
+            elif chart_type == "Candlestick Chart":
+                date_col = st.selectbox("Date Column", options=df.columns)
+                open_col = st.selectbox("Open", options=numeric_cols)
+                high_col = st.selectbox("High", options=numeric_cols)
+                low_col = st.selectbox("Low", options=numeric_cols)
+                close_col = st.selectbox("Close", options=numeric_cols)
+
+    
             elif chart_type == "Heatmap":
                 if numeric_cols and len(numeric_cols) > 1:
                     corr = df[numeric_cols].corr(method=corr_method)
