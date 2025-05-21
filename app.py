@@ -10,14 +10,14 @@ import plotly.graph_objects as go
 from sklearn.cluster import KMeans
 from sklearn.ensemble import IsolationForest
 from sklearn.preprocessing import OneHotEncoder
-import plotly.figure_factory as ff
 import folium
 from streamlit_folium import folium_static
 import google.generativeai as genai
+import plotly.figure_factory as ff
 import io
 import base64
 import re
-from datetime import datetime
+from datetime import datetime # scipy.stats is needed for Ridgeline Plot, consider adding "from scipy import stats"
 
 # Page configuration
 st.set_page_config(layout="wide", page_title="Advanced Dashboard Creator")
@@ -289,8 +289,16 @@ if uploaded_file is not None:
                 st.plotly_chart(fig)
             
             elif chart_type == "Density Plot":
-                fig = ff.create_distplot([df[x_axis].dropna()], [x_axis], bin_size=bins/100, show_rug=True)
-                fig.update_layout(width=width, height=height, title=f"Density Plot of {x_axis}")
+                data_for_density = df[x_axis].dropna()
+                if data_for_density.empty:
+                    st.warning(f"No data available for column '{x_axis}' to generate a density plot.")
+                    fig = go.Figure() # Create an empty figure to avoid further errors
+                else:
+                    # Let create_distplot determine bin_size automatically.
+                    # This avoids the TypeError caused by bin_size=bins/100.
+                    # The 'bins' slider will not directly affect this plot's binning.
+                    fig = ff.create_distplot([data_for_density], [x_axis], show_rug=True)
+                fig.update_layout(width=width, height=height, title=f"Density Plot of {x_axis} (auto bin size)")
                 st.plotly_chart(fig)
             
             elif chart_type == "Sunburst Chart":
