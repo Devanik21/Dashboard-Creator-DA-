@@ -293,34 +293,42 @@ if uploaded_file is not None:
                 st.dataframe(centers)
             
             elif ml_analysis == "Linear Regression" and numeric_cols and len(numeric_cols) >= 2:
-                st.subheader("Linear Regression")
-                x_var = st.selectbox("Independent Variable (X)", options=numeric_cols, index=0)
-                y_var = st.selectbox("Dependent Variable (Y)", options=numeric_cols, index=min(1, len(numeric_cols)-1))
-                
-                # Prepare data
-                reg_data = df[[x_var, y_var]].dropna()
-                X = reg_data[x_var].values.reshape(-1, 1)
-                y = reg_data[y_var].values
-                
-                # Fit regression model
-                model = LinearRegression()
-                model.fit(X, y)
-                
-                # Generate predictions
-                x_range = np.linspace(reg_data[x_var].min(), reg_data[x_var].max(), 100).reshape(-1, 1)
-                y_pred = model.predict(x_range)
-                
-                # Create scatter plot with regression line
-                fig = px.scatter(reg_data, x=x_var, y=y_var, opacity=0.65, title=f"Linear Regression: {y_var} vs {x_var}")
-                fig.add_traces(
-                    go.Scatter(x=x_range.flatten(), y=y_pred, mode='lines', name='Regression Line',
-                              line=dict(color='red', width=2))
-                )
-                st.plotly_chart(fig)
-                
-                # Display regression equation
-                st.write(f"Regression Equation: {y_var} = {model.coef_[0]:.4f} × {x_var} + {model.intercept_:.4f}")
-                st.write(f"R² Score: {model.score(X, y):.4f}")
+                st.subheader("📈 Linear Regression")
+
+                # Exclude datetime-like numeric columns
+                clean_numeric_cols = [col for col in numeric_cols if not np.issubdtype(df[col].dtype, np.datetime64)]
+
+                if len(clean_numeric_cols) < 2:
+                    st.warning("Not enough numeric (non-date) columns for regression.")
+                else:
+                    x_var = st.selectbox("Independent Variable (X)", options=clean_numeric_cols, index=0)
+                    y_var = st.selectbox("Dependent Variable (Y)", options=clean_numeric_cols, index=min(1, len(clean_numeric_cols)-1))
+
+                    # Prepare data
+                    reg_data = df[[x_var, y_var]].dropna()
+                    X = reg_data[x_var].values.reshape(-1, 1)
+                    y = reg_data[y_var].values
+
+                    # Fit regression model
+                    model = LinearRegression()
+                    model.fit(X, y)
+
+                    # Generate predictions
+                    x_range = np.linspace(reg_data[x_var].min(), reg_data[x_var].max(), 100).reshape(-1, 1)
+                    y_pred = model.predict(x_range)
+
+                    # Create scatter plot with regression line
+                    fig = px.scatter(reg_data, x=x_var, y=y_var, opacity=0.65, title=f"Linear Regression: {y_var} vs {x_var}")
+                    fig.add_traces(
+                        go.Scatter(x=x_range.flatten(), y=y_pred, mode='lines', name='Regression Line',
+                                   line=dict(color='red', width=2))
+                    )
+                    st.plotly_chart(fig)
+
+                    # Display regression equation and R²
+                    st.write(f"**Regression Equation:** `{y_var} = {model.coef_[0]:.4f} × {x_var} + {model.intercept_:.4f}`")
+                    st.write(f"**R² Score:** `{model.score(X, y):.4f}`")
+
             
             elif ml_analysis == "Anomaly Detection" and numeric_cols:
                 st.subheader("Anomaly Detection (Isolation Forest)")
