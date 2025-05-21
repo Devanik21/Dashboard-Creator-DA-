@@ -143,7 +143,7 @@ if uploaded_file is not None:
             chart_type = st.selectbox("Select Chart Type", options=[
                 "Bar Chart", "Line Chart", "Scatter Plot", "Histogram", 
                 "Box Plot", "Pie Chart", "Treemap", "Heatmap",
-                "Area Chart", "Violin Plot", "Density Plot", "Sunburst Chart",
+                "Area Chart", "Violin Plot",  "Sunburst Chart",
                 "Radar Chart", "Bubble Chart", "Waterfall Chart", "Candlestick Chart",
                 "Funnel Chart", "3D Scatter", "Parallel Coordinates", "Ridgeline Plot",
                 "Sankey Diagram", "Contour Plot", "Hexbin Plot", "Gauge Chart",
@@ -157,7 +157,7 @@ if uploaded_file is not None:
                     x_axis = st.selectbox("X-Axis", options=df.columns)
                     y_axis = st.selectbox("Y-Axis", options=numeric_cols if numeric_cols else df.columns)
                     color_by = st.selectbox("Color By (Optional)", options=["None"] + categorical_cols)
-                elif chart_type in ["Histogram", "Density Plot", "ECDF Plot"]:
+                elif chart_type in ["Histogram", "ECDF Plot"]:
                     x_axis = st.selectbox("Select Column", options=numeric_cols if numeric_cols else df.columns)
                     bins = st.slider("Number of Bins", min_value=5, max_value=100, value=20)
                 elif chart_type in ["Pie Chart", "Treemap", "Funnel Chart", "Sunburst Chart", "Donut Chart"]:
@@ -288,10 +288,7 @@ if uploaded_file is not None:
                                log_y=log_scale, title=f"Violin Plot: {y_axis} by {x_axis}")
                 st.plotly_chart(fig)
             
-            elif chart_type == "Density Plot":
-                data_for_density = df[x_axis].dropna()
-                if data_for_density.empty:
-                    st.warning(f"No data available for column '{x_axis}' to generate a density plot.")
+
                     fig = go.Figure() # Create an empty figure to avoid further errors
 
             
