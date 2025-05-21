@@ -235,7 +235,7 @@ if uploaded_file is not None:
 
 
 
-                        elif chart_type == "Area Chart":
+            elif chart_type == "Area Chart":
                 x_axis = st.selectbox("X-Axis", options=df.columns)
                 y_axis = st.selectbox("Y-Axis", options=numeric_cols if numeric_cols else df.columns)
                 color_by = st.selectbox("Color By (Optional)", options=["None"] + categorical_cols)
