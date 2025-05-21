@@ -289,7 +289,7 @@ if uploaded_file is not None:
                 st.plotly_chart(fig)
             
 
-                    fig = go.Figure() # Create an empty figure to avoid further errors
+
 
             
             elif chart_type == "Sunburst Chart":
