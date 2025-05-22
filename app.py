@@ -190,8 +190,10 @@ if st.session_state.show_suggestion_box:
             print(f"User Feature Suggestion: {suggestion_text}") # Log to console
             st.sidebar.success("Thank you for your suggestion! It has been noted.")
             st.session_state.show_suggestion_box = False # Hide after submission
-            st.session_state.suggestion_text_area_input = "" # Clear the text area
-            st.rerun() # Rerun to update the UI
+            # To clear the text area for its next appearance, delete its key from session_state.
+            if "suggestion_text_area_input" in st.session_state:
+                del st.session_state["suggestion_text_area_input"]
+            st.rerun() # Rerun to update the UI (hides the box and ensures text_area is fresh if reopened)
         else:
             st.sidebar.warning("Please enter your suggestion before submitting.")
 
