@@ -10,7 +10,7 @@ import plotly.graph_objects as go
 from sklearn.cluster import KMeans
 from sklearn.ensemble import IsolationForest
 from sklearn.preprocessing import OneHotEncoder, StandardScaler, MinMaxScaler
-from sklearn.decomposition import PCA
+from sklearn.decomposition import PCA 
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor 
@@ -18,6 +18,7 @@ from sklearn.metrics import mean_squared_error, r2_score, accuracy_score, classi
 import folium
 from sklearn.impute import SimpleImputer
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor, export_text, plot_tree
+from sklearn.ensemble import RandomForestClassifier # Added import
 from streamlit_folium import folium_static
 import google.generativeai as genai
 import io
