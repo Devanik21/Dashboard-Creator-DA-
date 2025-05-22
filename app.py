@@ -888,71 +888,7 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
             else:
                 st.info("No numeric columns available for transformation.")
 
-        # NEW FEATURE 18: Data Imputation Utility
-        with st.expander("🧹 Data Imputation Utility"):
-            st.subheader("Handle Missing Values")
-            if not df.empty:
-                cols_with_missing = df.columns[df.isnull().any()].tolist()
-                if not cols_with_missing:
-                    st.info("No columns with missing values found.")
-                else:
-                    impute_col_select = st.selectbox(
-                        "Select Column to Impute",
-                        cols_with_missing,
-                        key="impute_col_select"
-                    )
-                    if impute_col_select:
-                        missing_count = df[impute_col_select].isnull().sum()
-                        st.write(f"Column '{impute_col_select}' has {missing_count} missing values ({missing_count/len(df)*100:.2f}%).")
-
-                        imputation_methods = ["Mean", "Median", "Mode", "Constant Value"]
-                        if not pd.api.types.is_numeric_dtype(df[impute_col_select]):
-                            imputation_methods = ["Mode", "Constant Value"] # Limit for non-numeric
-
-                        impute_method = st.selectbox(
-                            "Imputation Method",
-                            imputation_methods,
-                            key="impute_method_select"
-                        )
-                        
-                        constant_value_impute = None
-                        if impute_method == "Constant Value":
-                            constant_value_impute = st.text_input("Enter Constant Value for Imputation", key="impute_constant_val")
-
-                        if st.button(f"Apply Imputation to '{impute_col_select}'", key=f"apply_impute_{impute_col_select}"):
-                            try:
-                                if impute_method == "Mean":
-                                    fill_val = df[impute_col_select].mean()
-                                    df[impute_col_select].fillna(fill_val, inplace=True)
-                                elif impute_method == "Median":
-                                    fill_val = df[impute_col_select].median()
-                                    df[impute_col_select].fillna(fill_val, inplace=True)
-                                elif impute_method == "Mode":
-                                    fill_val = df[impute_col_select].mode()[0] # mode can return multiple, take first
-                                    df[impute_col_select].fillna(fill_val, inplace=True)
-                                elif impute_method == "Constant Value":
-                                    if constant_value_impute is not None:
-                                        # Try to convert constant to column's dtype if possible
-                                        try:
-                                            typed_constant = pd.Series([constant_value_impute]).astype(df[impute_col_select].dtype).iloc[0]
-                                            df[impute_col_select].fillna(typed_constant, inplace=True)
-                                        except ValueError:
-                                            df[impute_col_select].fillna(constant_value_impute, inplace=True) # Fallback to string
-                                    else:
-                                        st.warning("Please enter a constant value.")
-                                st.success(f"Missing values in '{impute_col_select}' imputed using {impute_method}. Rerun analyses if needed.")
-                                st.rerun()
-                            except Exception as e:
-                                st.error(f"Error during imputation: {e}")
-            else:
-                st.info("Upload data to use the imputation utility.")
-
-
-        # NEW FEATURE 19: Feature Engineering - Date Part Extraction
-        # (This was previously Feature 18, now shifted due to new additions)
-        # The actual feature number in comments will be updated sequentially below.
-
-        # NEW FEATURE 19: Interactive Pivot Table Creator
+        # NEW FEATURE 18: Interactive Pivot Table Creator
         with st.expander("📋 Interactive Pivot Table Creator"):
             st.subheader("Summarize Data with Pivot Tables")
             if (categorical_cols or date_cols) and numeric_cols:
@@ -977,40 +913,7 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
             else:
                 st.info("Pivot tables require at least one categorical/date column and one numeric column.")
 
-        # NEW FEATURE 20: Feature Engineering - Date Part Extraction
-        with st.expander("📅 Feature Engineering: Date Part Extraction"):
-            st.subheader("Extract Components from Date Columns")
-            if date_cols:
-                selected_date_col_eng = st.selectbox("Select Date Column for Feature Engineering", date_cols, key="date_eng_select")
-                
-                if selected_date_col_eng:
-                    parts_to_extract = st.multiselect(
-                        "Select Date/Time Parts to Extract",
-                        ["Year", "Month", "Day", "Day of Week", "Day Name", "Week of Year", "Quarter", "Hour", "Minute"],
-                        key="date_parts_extract"
-                    )
-
-                    if parts_to_extract and st.button("Extract Date Parts", key="extract_date_parts_button"):
-                        try:
-                            for part in parts_to_extract:
-                                new_col_name_date_eng = f"{selected_date_col_eng}_{part.lower().replace(' ', '_')}"
-                                if part == "Year": df[new_col_name_date_eng] = df[selected_date_col_eng].dt.year
-                                elif part == "Month": df[new_col_name_date_eng] = df[selected_date_col_eng].dt.month
-                                elif part == "Day": df[new_col_name_date_eng] = df[selected_date_col_eng].dt.day
-                                elif part == "Day of Week": df[new_col_name_date_eng] = df[selected_date_col_eng].dt.dayofweek # Monday=0, Sunday=6
-                                elif part == "Day Name": df[new_col_name_date_eng] = df[selected_date_col_eng].dt.day_name()
-                                elif part == "Week of Year": df[new_col_name_date_eng] = df[selected_date_col_eng].dt.isocalendar().week.astype(int)
-                                elif part == "Quarter": df[new_col_name_date_eng] = df[selected_date_col_eng].dt.quarter
-                                elif part == "Hour": df[new_col_name_date_eng] = df[selected_date_col_eng].dt.hour
-                                elif part == "Minute": df[new_col_name_date_eng] = df[selected_date_col_eng].dt.minute
-                                # Update numeric/categorical cols lists
-                                if pd.api.types.is_numeric_dtype(df[new_col_name_date_eng]) and new_col_name_date_eng not in numeric_cols: numeric_cols.append(new_col_name_date_eng)
-                                elif df[new_col_name_date_eng].dtype == 'object' and new_col_name_date_eng not in categorical_cols: categorical_cols.append(new_col_name_date_eng)
-                            st.success(f"Extracted date parts from '{selected_date_col_eng}' into new columns. Rerun other analyses if needed.")
-                            st.rerun()
-                        except Exception as e: st.error(f"Error extracting date parts: {e}")
-            else: st.info("No date columns available for feature engineering.")
-        # NEW FEATURE 21: Simple Time Series Forecasting
+        # NEW FEATURE 19: Simple Time Series Forecasting
         if date_cols and numeric_cols:
             with st.expander("📉 Simple Time Series Forecasting (Exponential Smoothing)"):
                 st.subheader("Basic Forecasting")
@@ -1063,7 +966,7 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
                 else:
                     st.info("Select a date column and a numeric value column for forecasting.")
 
-        # NEW FEATURE 22: Dedicated PCA Explorer
+        # NEW FEATURE 20: Dedicated PCA Explorer
         with st.expander("🔬 Principal Component Analysis (PCA) Explorer"):
             st.subheader("Dimensionality Reduction & Variance Analysis")
             if len(numeric_cols) >= 2:
@@ -1122,7 +1025,7 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
             else:
                 st.info("PCA requires at least two numeric columns in the dataset.")
 
-        # NEW FEATURE 23: Sentiment Analysis for Text Columns
+        # NEW FEATURE 21: Sentiment Analysis for Text Columns
         with st.expander("💬 Sentiment Analysis for Text Data"):
             st.subheader("Analyze Sentiment in Text Columns")
             
@@ -1182,7 +1085,7 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
             else:
                 st.info("No categorical (potential text) columns found for sentiment analysis.")
 
-        # NEW FEATURE 24: User-Defined Calculated Fields
+        # NEW FEATURE 22: User-Defined Calculated Fields
         with st.expander("🧮 User-Defined Calculated Fields"):
             st.subheader("Create New Columns from Formulas")
             
@@ -1222,7 +1125,7 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
             elif new_col_name or formula:
                 st.warning("Please provide both a name and a formula for the calculated column.")
 
-        # NEW FEATURE 25: Data Deduplication Utility
+        # NEW FEATURE 24: Data Deduplication Utility
         with st.expander("🗑️ Data Deduplication Utility"):
             st.subheader("Identify and Remove Duplicate Rows")
 
@@ -1265,7 +1168,7 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
             else:
                 st.info("Upload data to use the deduplication utility.")
 
-        # NEW FEATURE 26: Interactive Data Binning
+        # NEW FEATURE 25: Interactive Data Binning
         with st.expander("📊 Interactive Data Binning"):
             st.subheader("Categorize Numeric Data into Bins")
             if numeric_cols:
@@ -1308,7 +1211,7 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
             else:
                 st.info("No numeric columns available for binning.")
 
-        # NEW FEATURE 27: Decision Tree Explorer
+        # NEW FEATURE 26: Decision Tree Explorer (Was Feature 27)
         with st.expander("🌳 Decision Tree Explorer"):
             st.subheader("Train and Analyze Decision Tree Models")
             if not df.empty:
@@ -1397,7 +1300,7 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
             else:
                 st.info("Upload data to use the Decision Tree explorer.")
 
-        # NEW FEATURE 28: Custom Theme Builder
+        # NEW FEATURE 27: Custom Theme Builder (Was Feature 28)
         with st.expander("🖌️ Custom Theme Designer"):
             st.subheader("Create Your Custom Theme")
             
