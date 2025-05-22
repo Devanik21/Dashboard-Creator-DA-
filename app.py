@@ -37,6 +37,9 @@ warnings.filterwarnings('ignore')
 # Page configuration
 st.set_page_config(layout="wide", page_title="Advanced Dashboard Creator", page_icon="📊")
 
+with st.sidebar:
+    st.image("d1.jpg", caption="We called it language. It was a lock....", use_container_width=True)
+
 # Custom CSS for better styling
 st.markdown("""
 <style>
@@ -1743,3 +1746,7 @@ else:
         df = pd.DataFrame(sample_data)
         st.success("Sample data generated! Use this to explore features.")
         st.dataframe(df.head())
+
+
+with st.sidebar:
+    st.image("d2.jpg", caption="We called it language. It was a lock....", use_container_width=True)
