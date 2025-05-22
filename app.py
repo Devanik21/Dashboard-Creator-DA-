@@ -24,6 +24,7 @@ import re
 from datetime import datetime, timedelta
 import time # Import the time module
 import warnings
+from scipy import stats
 warnings.filterwarnings('ignore')
 
 # Page configuration
@@ -526,38 +527,113 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 
         # NEW FEATURE 14: A/B Testing Suite
         if len(categorical_cols) >= 1 and len(numeric_cols) >= 1:
-            with st.expander("📈 A/B Testing Suite"):
+            with st.expander("📈 A/B Testing Suite", expanded=False): # Keep it collapsed by default
                 st.subheader("Statistical Significance Testing")
-                
+
                 group_col = st.selectbox("Group Column (A/B)", categorical_cols)
                 metric_col = st.selectbox("Metric Column", numeric_cols)
-                
-                groups = df[group_col].unique()
-                if len(groups) == 2:
-                    group_a = df[df[group_col] == groups[0]][metric_col].dropna()
-                    group_b = df[df[group_col] == groups[1]][metric_col].dropna()
-                    
-                    if len(group_a) > 5 and len(group_b) > 5:
-                        # Basic stats
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            st.metric(f"{groups[0]} Mean", f"{group_a.mean():.2f}")
-                            st.metric(f"{groups[0]} Size", len(group_a))
-                        with col2:
-                            st.metric(f"{groups[1]} Mean", f"{group_b.mean():.2f}")
-                            st.metric(f"{groups[1]} Size", len(group_b))
-                        
-                        # Effect size
-                        effect_size = abs(group_a.mean() - group_b.mean()) / np.sqrt((group_a.var() + group_b.var()) / 2)
-                        st.metric("Effect Size (Cohen's d)", f"{effect_size:.3f}")
-                        
-                        # Distribution comparison
-                        fig = go.Figure()
-                        fig.add_trace(go.Histogram(x=group_a, name=str(groups[0]), opacity=0.7))
-                        fig.add_trace(go.Histogram(x=group_b, name=str(groups[1]), opacity=0.7))
-                        fig.update_layout(title="Distribution Comparison", barmode='overlay')
-                        st.plotly_chart(fig, use_container_width=True)
 
+                if group_col and metric_col:
+                    groups = df[group_col].unique()
+                    if len(groups) == 2:
+                        group_a_data = df[df[group_col] == groups[0]][metric_col].dropna()
+                        group_b_data = df[df[group_col] == groups[1]][metric_col].dropna()
+
+                        if len(group_a_data) > 5 and len(group_b_data) > 5:
+                            # Basic stats
+                            st.markdown("#### Group Statistics")
+                            col_stats1, col_stats2 = st.columns(2)
+                            with col_stats1:
+                                st.metric(f"{groups[0]} Mean", f"{group_a_data.mean():.2f}")
+                                st.metric(f"{groups[0]} Size", len(group_a_data))
+                            with col_stats2:
+                                st.metric(f"{groups[1]} Mean", f"{group_b_data.mean():.2f}")
+                                st.metric(f"{groups[1]} Size", len(group_b_data))
+
+                            # Statistical Test (T-test)
+                            from scipy import stats # Import locally to keep dependencies clear
+
+                            # Perform t-test
+                            t_stat, p_value = stats.ttest_ind(group_a_data, group_b_data, equal_var=False) # Welch's t-test by default
+
+                            # Effect size (Cohen's d)
+                            # For Welch's t-test, pooled_std calculation is slightly different or can be approximated
+                            # A common way to calculate Cohen's d with unequal variances:
+                            mean_diff = group_a_data.mean() - group_b_data.mean()
+                            pooled_std = np.sqrt((group_a_data.var() + group_b_data.var()) / 2) # Simpler approximation
+                            if pooled_std == 0: # Avoid division by zero
+                                cohens_d = np.nan
+                            else:
+                                cohens_d = mean_diff / pooled_std
+
+                            # Statistical significance
+                            alpha = st.slider("Significance Level (Alpha)", 0.01, 0.10, 0.05, 0.01)
+                            is_significant = p_value < alpha
+
+                            # Display results
+                            st.markdown("#### Test Results")
+                            res_col1, res_col2, res_col3 = st.columns(3)
+
+                            with res_col1:
+                                st.metric("T-statistic", f"{t_stat:.3f}")
+                            with res_col2:
+                                st.metric("P-value", f"{p_value:.4f}")
+                            with res_col3:
+                                st.metric("Cohen's d", f"{cohens_d:.3f}" if not np.isnan(cohens_d) else "N/A")
+
+                            # Significance interpretation
+                            if is_significant:
+                                st.success(f"✅ **Statistically Significant** (p < {alpha})")
+                                st.write(f"There is a significant difference in '{metric_col}' between '{groups[0]}' and '{groups[1]}'.")
+                            else:
+                                st.warning(f"❌ **Not Statistically Significant** (p ≥ {alpha})")
+                                st.write(f"No significant difference found in '{metric_col}' between '{groups[0]}' and '{groups[1]}'.")
+
+                            # Effect size interpretation
+                            if not np.isnan(cohens_d):
+                                if abs(cohens_d) < 0.2:
+                                    effect_interpretation = "Small effect"
+                                elif abs(cohens_d) < 0.5:
+                                    effect_interpretation = "Medium effect"
+                                else:
+                                    effect_interpretation = "Large effect"
+                                st.info(f"**Effect Size**: {effect_interpretation} (|d| = {abs(cohens_d):.3f})")
+                            
+                            # Confidence interval for difference in means
+                            # Using stats.t.interval for more accuracy with t-distribution
+                            diff_mean_val = group_a_data.mean() - group_b_data.mean()
+                            se_diff = np.sqrt(group_a_data.var()/len(group_a_data) + group_b_data.var()/len(group_b_data))
+                            dof = (se_diff**4) / ( ( (group_a_data.var()/len(group_a_data))**2 / (len(group_a_data)-1) ) + ( (group_b_data.var()/len(group_b_data))**2 / (len(group_b_data)-1) ) ) # Welch-Satterthwaite equation for DoF
+                            
+                            if se_diff > 0 and not np.isnan(dof) and dof > 0 : # Check for valid SE and DoF
+                                ci = stats.t.interval(1-alpha, dof, loc=diff_mean_val, scale=se_diff)
+                                st.write(f"**{((1-alpha)*100):.0f}% Confidence Interval for difference**: [{ci[0]:.3f}, {ci[1]:.3f}]")
+                            else:
+                                st.write("**Confidence Interval for difference**: Could not be calculated (likely due to zero variance or insufficient data).")
+
+                            # Distribution comparison
+                            fig_hist = go.Figure()
+                            fig_hist.add_trace(go.Histogram(x=group_a_data, name=str(groups[0]), opacity=0.7, nbinsx=20, marker_color=custom_color))
+                            fig_hist.add_trace(go.Histogram(x=group_b_data, name=str(groups[1]), opacity=0.7, nbinsx=20))
+                            fig_hist.update_layout(title="Distribution Comparison", barmode='overlay', xaxis_title=metric_col, yaxis_title="Frequency")
+                            st.plotly_chart(fig_hist, use_container_width=True)
+
+                            # Box plot comparison
+                            fig_box = go.Figure()
+                            fig_box.add_trace(go.Box(y=group_a_data, name=str(groups[0]), marker_color=custom_color))
+                            fig_box.add_trace(go.Box(y=group_b_data, name=str(groups[1])))
+                            fig_box.update_layout(title="Box Plot Comparison", yaxis_title=metric_col)
+                            st.plotly_chart(fig_box, use_container_width=True)
+
+                        else:
+                            st.warning("Need at least 6 samples in each group for reliable testing.")
+                    elif len(groups) > 2:
+                        st.info("A/B testing is designed for comparing exactly two groups. For multiple groups, consider using ANOVA (Analysis of Variance), which is not yet implemented in this suite.")
+                    elif len(groups) < 2:
+                        st.warning(f"The selected group column '{group_col}' has fewer than 2 distinct groups. A/B testing requires at least two groups to compare.")
+                else:
+                    st.info("Select a categorical group column and a numeric metric column to perform A/B testing.")
+                    
         # NEW FEATURE 15: Custom Theme Builder
         with st.expander("🎨 Custom Theme Builder"):
             st.subheader("Create Your Custom Theme")
