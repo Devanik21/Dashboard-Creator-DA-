@@ -23,6 +23,7 @@ import base64
 import re
 from datetime import datetime, timedelta
 import warnings
+import time # Import the time module
 warnings.filterwarnings('ignore')
 
 # Page configuration
