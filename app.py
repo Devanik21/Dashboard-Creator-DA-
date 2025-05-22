@@ -1122,8 +1122,94 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
             elif new_col_name or formula:
                 st.warning("Please provide both a name and a formula for the calculated column.")
 
-        # NEW FEATURE 23: Custom Theme Builder (Renumbered)
-        with st.expander("🖌️ Custom Theme Designer"): # Was Feature 21
+        # NEW FEATURE 24: Data Deduplication Utility
+        with st.expander("🗑️ Data Deduplication Utility"):
+            st.subheader("Identify and Remove Duplicate Rows")
+
+            if not df.empty:
+                all_columns = df.columns.tolist()
+                subset_cols = st.multiselect(
+                    "Select columns to consider for identifying duplicates (leave empty for all columns)",
+                    all_columns,
+                    default=[],
+                    key="dedup_subset_cols"
+                )
+
+                check_subset = subset_cols if subset_cols else None
+                
+                duplicates_series = df.duplicated(subset=check_subset, keep=False)
+                num_duplicates = duplicates_series.sum()
+
+                st.metric("Number of Duplicate Rows Found (considering all occurrences)", num_duplicates)
+
+                if num_duplicates > 0:
+                    st.write("#### Duplicate Rows:")
+                    st.dataframe(df[duplicates_series])
+
+                    keep_option = st.radio(
+                        "Which duplicates to keep?",
+                        ('first', 'last', 'Remove All Duplicates (False)'),
+                        index=0,
+                        key="dedup_keep_option"
+                    )
+                    keep_param = keep_option if keep_option != 'Remove All Duplicates (False)' else False
+
+                    if st.button("Remove Duplicates", key="remove_duplicates_button"):
+                        df_deduplicated = df.drop_duplicates(subset=check_subset, keep=keep_param)
+                        rows_removed = len(df) - len(df_deduplicated)
+                        df = df_deduplicated
+                        st.success(f"{rows_removed} duplicate rows removed. DataFrame updated.")
+                        st.rerun()
+                else:
+                    st.info("No duplicate rows found based on the selected criteria.")
+            else:
+                st.info("Upload data to use the deduplication utility.")
+
+        # NEW FEATURE 25: Interactive Data Binning
+        with st.expander("📊 Interactive Data Binning"):
+            st.subheader("Categorize Numeric Data into Bins")
+            if numeric_cols:
+                bin_col_select = st.selectbox("Select Numeric Column to Bin", numeric_cols, key="bin_col_select")
+                new_binned_col_name = st.text_input("Name for New Binned Column", f"{bin_col_select}_binned", key="new_binned_col_name")
+                
+                bin_method = st.radio("Binning Method", ["Equal Width (Number of Bins)", "Custom Edges"], key="bin_method_radio")
+
+                binned_series_preview = None
+
+                if bin_method == "Equal Width (Number of Bins)":
+                    num_bins_for_width = st.number_input("Number of Bins", min_value=2, max_value=50, value=5, key="num_bins_for_width")
+                    if st.button("Preview Binned Column (Equal Width)", key="preview_bin_equal_width"):
+                        try:
+                            binned_series_preview = pd.cut(df[bin_col_select], bins=num_bins_for_width, include_lowest=True)
+                        except Exception as e:
+                            st.error(f"Error creating bins: {e}")
+                
+                elif bin_method == "Custom Edges":
+                    custom_edges_str = st.text_input("Enter Custom Bin Edges (comma-separated, e.g., 0,10,20,30)", key="custom_bin_edges")
+                    if st.button("Preview Binned Column (Custom Edges)", key="preview_bin_custom_edges"):
+                        try:
+                            edges = sorted([float(edge.strip()) for edge in custom_edges_str.split(',') if edge.strip()])
+                            if len(edges) >= 2:
+                                binned_series_preview = pd.cut(df[bin_col_select], bins=edges, include_lowest=True, right=True) # Default right=True
+                            else:
+                                st.warning("Please provide at least two edges (e.g., min_val, max_val).")
+                        except Exception as e:
+                            st.error(f"Error creating bins with custom edges: {e}")
+
+                if binned_series_preview is not None:
+                    st.write("#### Preview of Binned Column (Value Counts):")
+                    st.dataframe(binned_series_preview.value_counts().sort_index().reset_index().rename(columns={'index': 'Bin Range', bin_col_select: 'Count'}))
+                    if st.checkbox(f"Confirm and Add '{new_binned_col_name}' to DataFrame?", key="confirm_add_binned_col"):
+                        df[new_binned_col_name] = binned_series_preview
+                        st.success(f"Binned column '{new_binned_col_name}' added. Rerun other analyses if needed.")
+                        if new_binned_col_name not in categorical_cols: # Binned column is categorical
+                            categorical_cols.append(new_binned_col_name)
+                        st.rerun()
+            else:
+                st.info("No numeric columns available for binning.")
+
+        # NEW FEATURE 26: Custom Theme Builder (Was Feature 23)
+        with st.expander("🖌️ Custom Theme Designer"): 
             st.subheader("Create Your Custom Theme")
             
             col1, col2 = st.columns(2)
