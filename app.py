@@ -1300,6 +1300,91 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
             else:
                 st.info("Upload data to use the Decision Tree explorer.")
 
+        # NEW FEATURE: Random Forest Explorer
+        with st.expander("🌲 Random Forest Explorer"):
+            st.subheader("Train and Analyze Random Forest Models")
+            if not df.empty:
+                all_cols_rf = df.columns.tolist()
+                target_col_rf = st.selectbox("Select Target Variable (for Random Forest)", all_cols_rf, key="rf_target_col")
+
+                if target_col_rf:
+                    # Determine task type
+                    if df[target_col_rf].dtype in [np.number, 'int64', 'float64'] and df[target_col_rf].nunique() > 10: # Heuristic for regression
+                        task_type_rf = "Regression"
+                        model_rf_instance = RandomForestRegressor(random_state=42)
+                        criterion_options_rf = ["squared_error", "absolute_error", "friedman_mse", "poisson"]
+                    else:
+                        task_type_rf = "Classification"
+                        model_rf_instance = RandomForestClassifier(random_state=42)
+                        criterion_options_rf = ["gini", "entropy", "log_loss"]
+                    st.write(f"**Detected Task Type:** {task_type_rf}")
+
+                    feature_cols_rf_options = [col for col in all_cols_rf if col != target_col_rf]
+                    feature_cols_rf = st.multiselect("Select Feature Columns for RF", feature_cols_rf_options, default=feature_cols_rf_options[:min(3, len(feature_cols_rf_options))], key="rf_feature_cols")
+
+                    if feature_cols_rf:
+                        # Preprocessing for RF
+                        df_rf_processed = df[[target_col_rf] + feature_cols_rf].copy().dropna()
+                        
+                        # Encode categorical features
+                        categorical_features_rf = df_rf_processed[feature_cols_rf].select_dtypes(include='object').columns.tolist()
+                        if categorical_features_rf:
+                            df_rf_processed = pd.get_dummies(df_rf_processed, columns=categorical_features_rf, drop_first=True)
+                        
+                        X_rf_cols = [col for col in df_rf_processed.columns if col != target_col_rf] # Get actual feature columns after dummification
+                        X_rf = df_rf_processed[X_rf_cols]
+                        y_rf = df_rf_processed[target_col_rf]
+
+                        # Encode target if classification and target is object/string
+                        class_names_rf = None
+                        if task_type_rf == "Classification" and y_rf.dtype == 'object':
+                            le_rf = LabelEncoder()
+                            y_rf = le_rf.fit_transform(y_rf)
+                            class_names_rf = le_rf.classes_.astype(str)
+
+                        if len(X_rf) > 10 and len(X_rf.columns) > 0:
+                            X_train_rf, X_test_rf, y_train_rf, y_test_rf = train_test_split(X_rf, y_rf, test_size=0.3, random_state=42)
+
+                            st.sidebar.subheader("Random Forest Hyperparameters")
+                            n_estimators_rf = st.sidebar.slider("Number of Estimators (Trees)", 10, 500, 100, 10, key="rf_n_estimators")
+                            max_depth_rf = st.sidebar.slider("Max Depth (RF)", 2, 30, 10, 1, key="rf_max_depth")
+                            min_samples_split_rf = st.sidebar.slider("Min Samples Split (RF)", 2, 20, 2, key="rf_min_samples_split")
+                            min_samples_leaf_rf = st.sidebar.slider("Min Samples Leaf (RF)", 1, 20, 1, key="rf_min_samples_leaf")
+                            criterion_rf = st.sidebar.selectbox("Criterion (RF)", criterion_options_rf, key="rf_criterion")
+
+                            model_rf_instance.set_params(
+                                n_estimators=n_estimators_rf,
+                                max_depth=max_depth_rf, 
+                                min_samples_split=min_samples_split_rf, 
+                                min_samples_leaf=min_samples_leaf_rf, 
+                                criterion=criterion_rf
+                            )
+                            
+                            if st.button("Train & Evaluate Random Forest", key="train_rf_button"):
+                                model_rf_instance.fit(X_train_rf, y_train_rf)
+                                y_pred_rf = model_rf_instance.predict(X_test_rf)
+
+                                st.subheader("Model Performance (Random Forest)")
+                                if task_type_rf == "Regression":
+                                    st.metric("R-squared (R²)", f"{r2_score(y_test_rf, y_pred_rf):.3f}")
+                                    st.metric("Mean Squared Error (MSE)", f"{mean_squared_error(y_test_rf, y_pred_rf):.3f}")
+                                else: # Classification
+                                    st.metric("Accuracy", f"{accuracy_score(y_test_rf, y_pred_rf):.3f}")
+                                    st.text("Classification Report:")
+                                    st.text(classification_report(y_test_rf, y_pred_rf, target_names=class_names_rf, zero_division=0))
+
+                                st.subheader("Feature Importances (Random Forest)")
+                                importances_rf = pd.DataFrame({'feature': X_train_rf.columns, 'importance': model_rf_instance.feature_importances_}).sort_values('importance', ascending=False)
+                                st.dataframe(importances_rf)
+                                fig_imp_rf = px.bar(importances_rf, x='importance', y='feature', orientation='h', title="Random Forest Feature Importances")
+                                st.plotly_chart(fig_imp_rf, use_container_width=True)
+                        else:
+                            st.warning("Not enough data or features after preprocessing for Random Forest training.")
+                    else:
+                        st.info("Select feature columns for Random Forest to proceed.")
+            else:
+                st.info("Upload data to use the Random Forest explorer.")
+
         # NEW FEATURE 27: Data Grouping & Aggregation
         with st.expander("🧱 Data Grouping & Aggregation"):
             st.subheader("Group Data and Calculate Aggregate Statistics")
