@@ -1011,7 +1011,7 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
             # Attempt to download vader_lexicon if not found
             try:
                 nltk.data.find('sentiment/vader_lexicon.zip')
-            except nltk.downloader.DownloadError:
+            except LookupError: # More appropriate exception for nltk.data.find
                 st.info("Downloading VADER lexicon for sentiment analysis (one-time download)...")
                 try:
                     nltk.download('vader_lexicon')
