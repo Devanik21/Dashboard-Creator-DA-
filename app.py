@@ -34,37 +34,103 @@ st.set_page_config(layout="wide", page_title="Advanced Dashboard Creator", page_
 # Custom CSS for better styling
 st.markdown("""
 <style>
+/* General App Style for Dark Theme */
+body {
+    color: #E0E0E0; /* Lighter text for dark backgrounds */
+}
+
 .metric-card {
-    background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
-    padding: 20px;
-    border-radius: 10px;
-    color: white;
+    background: linear-gradient(135deg, #2C5364 0%, #203A43 50%, #0F2027 100%); /* Dark blue/grey gradient */
+    padding: 25px;
+    border-radius: 12px;
+    color: #FFFFFF;
     text-align: center;
     margin: 10px 0;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    border: 1px solid #4A5568; /* Subtle border */
 }
+.metric-card h3 {
+    font-size: 2.5em; /* Larger metric numbers */
+    margin-bottom: 5px;
+    font-weight: 700;
+}
+.metric-card p {
+    font-size: 1em;
+    font-weight: 300;
+}
+
 .insight-box {
-    background: #f0f2f6;
-    padding: 15px;
-    border-left: 5px solid #667eea;
-    border-radius: 5px;
-    margin: 10px 0;
+    background: #2D3748; /* Darker background for insight box */
+    padding: 20px;
+    border-left: 5px solid #38B2AC; /* Teal accent border */
+    border-radius: 8px;
+    margin: 15px 0;
+    color: #E2E8F0; /* Lighter text */
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+.insight-box strong {
+    color: #63B3ED; /* Brighter color for strong text */
+}
+
+/* Styling for expander headers */
+div[data-testid="stExpander"] > div:first-child {
+    background-color: #2D3748; /* Darker background for expander header */
+    padding: 10px 15px !important;
+    border-radius: 8px 8px 0 0;
+    border-bottom: 1px solid #4A5568;
+}
+div[data-testid="stExpander"] > div:first-child summary {
+    color: #A0AEC0; /* Lighter text for expander title */
+    font-weight: 600;
+    font-size: 1.1em;
+}
+div[data-testid="stExpander"] > div:first-child summary:hover {
+    color: #E2E8F0;
+}
+
+/* General Button Styling */
+.stButton > button {
+    border: 1px solid #38B2AC;
+    background-color: transparent;
+    color: #38B2AC;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+.stButton > button:hover {
+    background-color: #38B2AC;
+    color: #1A202C;
+    box-shadow: 0 2px 10px rgba(56, 178, 172, 0.4);
+}
+.stButton > button:active {
+    background-color: #2C7A7B !important;
+    color: #1A202C !important;
+}
+
+/* Styling for input widgets */
+div[data-testid="stSelectbox"] label, div[data-testid="stMultiSelect"] label,
+div[data-testid="stTextInput"] label, div[data-testid="stSlider"] label,
+div[data-testid="stColorPicker"] label, div[data-testid="stNumberInput"] label {
+    font-weight: 500;
+    color: #CBD5E0; /* Lighter label text for dark theme */
 }
 </style>
 """, unsafe_allow_html=True)
 
 # Sidebar configuration
-st.sidebar.header("📊 Dashboard Options")
-selected_theme = st.sidebar.selectbox("🎨 Theme", options=['light', 'dark', 'cyberpunk'], index=0)
-color_scheme = st.sidebar.selectbox("🌈 Color Scheme", options=['viridis', 'plasma', 'inferno', 'magma'], index=0)
-custom_color = st.sidebar.color_picker("🎨 Custom Color", "#1f77b4")
+st.sidebar.header("🛠️ Dashboard Controls & Options")
+selected_theme = st.sidebar.selectbox("🎨 Theme Selection", options=['light', 'dark', 'cyberpunk'], index=1) # Default to dark
+color_scheme = st.sidebar.selectbox("🌈 Chart Color Palette", options=['viridis', 'plasma', 'inferno', 'magma', 'cividis'], index=1) # Plasma default
+custom_color = st.sidebar.color_picker("🎨 Custom Accent Color", "#38B2AC") # Teal default
 
 # NEW FEATURE 1: Real-time data refresh
-refresh_interval = st.sidebar.slider("⚡ Auto-refresh (seconds)", 0, 60, 0)
+refresh_interval = st.sidebar.slider("⏱️ Auto-Refresh Interval (s)", 0, 60, 0)
 if refresh_interval > 0:
     st.sidebar.info(f"Dashboard will refresh every {refresh_interval} seconds")
 
 # Gemini API Integration
-st.sidebar.header("🧠 AI Insights")
+st.sidebar.header("🤖 AI-Powered Assistance")
 gemini_api_key = st.sidebar.text_input("Gemini API Key", type="password")
 if gemini_api_key:
     try:
@@ -73,8 +139,8 @@ if gemini_api_key:
         st.sidebar.error(f"API Error: {str(e)}")
 
 # Main title with metrics
-st.title("🚀 Enhanced Dashboard Creator")
-st.write("Upload a file to generate an advanced dashboard with 10+ new features")
+st.title("🚀 Advanced Data Explorer & Visualizer")
+st.markdown("### 🔮 Upload your data to unlock insights and visualizations!")
 
 # NEW FEATURE 2: Multiple file upload support
 uploaded_files = st.file_uploader("Choose files", type=["csv", "xlsx", "json"], accept_multiple_files=True)
@@ -102,7 +168,7 @@ if uploaded_files:
         df = datasets[selected_dataset]
         
         # NEW FEATURE 4: Advanced data profiling
-        with st.expander("📈 Advanced Data Profiling", expanded=True):
+        with st.expander("📊 Advanced Data Profiling", expanded=True):
             col1, col2, col3, col4 = st.columns(4)
             with col1:
                 st.markdown(f'<div class="metric-card"><h3>{df.shape[0]:,}</h3><p>Total Rows</p></div>', unsafe_allow_html=True)
@@ -119,7 +185,7 @@ if uploaded_files:
             st.markdown(f'<div class="insight-box"><strong>Data Quality Score: {quality_score:.1f}/100</strong><br>Based on missing values and duplicate records</div>', unsafe_allow_html=True)
         
         # NEW FEATURE 5: Smart data type detection and conversion
-        with st.expander("🔍 Smart Data Type Detection"):
+        with st.expander("💡 Smart Data Type Detection & Conversion"):
             st.subheader("Suggested Data Type Conversions")
             suggestions = []
             
@@ -157,7 +223,7 @@ if uploaded_files:
         date_cols = df.select_dtypes(include='datetime').columns.tolist()
 
         # NEW FEATURE 6: Advanced filtering system
-        with st.expander("🔧 Advanced Data Filtering"):
+        with st.expander("⚙️ Advanced Data Filtering System"):
             st.subheader("Multi-Column Filters")
             
             # Numeric filters
@@ -182,7 +248,7 @@ if uploaded_files:
             st.info(f"Filtered dataset: {df.shape[0]} rows × {df.shape[1]} columns")
 
         # NEW FEATURE 7: Automated statistical testing
-        with st.expander("📊 Statistical Analysis Suite"):
+        with st.expander("📈 Statistical Analysis Suite"):
             if len(numeric_cols) >= 2:
                 st.subheader("Correlation Analysis")
                 corr_method = st.selectbox("Correlation Method", ["pearson", "spearman", "kendall"])
@@ -211,7 +277,7 @@ if uploaded_files:
                         st.write(f"• {strength} {direction} correlation: **{col1}** ↔ **{col2}** ({corr_val:.3f})")
 
         # NEW FEATURE 8: Machine Learning Pipeline
-        with st.expander("🤖 AutoML Pipeline"):
+        with st.expander("🧠 AutoML Predictive Pipeline"):
             if len(numeric_cols) >= 2:
                 st.subheader("Automated Model Building")
                 
@@ -271,7 +337,7 @@ if uploaded_files:
 
         # NEW FEATURE 9: Data comparison dashboard
         if comparison_mode and len(datasets) > 1:
-            with st.expander("⚖️ Dataset Comparison Dashboard"):
+            with st.expander("🆚 Dataset Comparison Dashboard"):
                 st.subheader("Compare Multiple Datasets")
                 
                 compare_datasets = st.multiselect("Select datasets to compare", 
@@ -298,7 +364,7 @@ if uploaded_files:
                     st.plotly_chart(fig, use_container_width=True)
 
         # NEW FEATURE 10: Export and reporting system
-        with st.expander("📋 Advanced Export & Reporting"):
+        with st.expander("📄 Advanced Export & Reporting System"):
             st.subheader("Generate Analysis Report")
             
             report_sections = st.multiselect("Include in Report", 
@@ -342,7 +408,7 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
                 st.download_button("Download Report", report, file_name="analysis_report.txt")
 
         # AI-Powered Insights with Gemini API
-        with st.expander("🧠 AI-Powered Insights", expanded=True):
+        with st.expander("💬 AI-Powered Insights (Gemini)", expanded=True):
             st.subheader("Ask Questions About Your Data")
             
             if gemini_api_key:
@@ -395,7 +461,7 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
                 st.info("Enter your Gemini API key in the sidebar to enable AI insights.")
 
         # Interactive visualization builder
-        with st.expander("📊 Quick Visualization Builder"):
+        with st.expander("🎨 Quick Visualization Builder"):
             if numeric_cols or categorical_cols:
                 viz_type = st.selectbox("Chart Type", ["Scatter", "Line", "Bar", "Histogram", "Box"])
                 
@@ -417,7 +483,7 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
                     st.plotly_chart(fig, use_container_width=True)
 
         # NEW FEATURE 11: Anomaly Detection Dashboard
-        with st.expander("🎯 Anomaly Detection Dashboard"):
+        with st.expander("🚨 Anomaly Detection Dashboard"):
             if numeric_cols:
                 st.subheader("Interactive Outlier Detection")
                 anomaly_col = st.selectbox("Select Column for Anomaly Detection", numeric_cols)
@@ -453,7 +519,7 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
         # NEW FEATURE 12: Time Series Analysis
         # Uses globally defined date_cols, numeric_cols
         if date_cols and numeric_cols:
-            with st.expander("📊 Time Series Analysis"):
+            with st.expander("⏳ Time Series Analysis & Trends"):
                 st.subheader("Trend Analysis & Forecasting")
                 date_col = st.selectbox("Date Column", date_cols, key="tsa_date_col")
                 value_col = st.selectbox("Value Column", numeric_cols, key="tsa_value_col")
@@ -484,7 +550,7 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
                         st.metric("Volatility", f"{volatility:.1f}%")
 
         # NEW FEATURE 13: Data Relationship Mapper
-        with st.expander("🔗 Data Relationship Mapper"):
+        with st.expander("🕸️ Data Relationship Mapper"):
             st.subheader("Column Relationship Network")
             if len(numeric_cols) >= 3:
                 # Create correlation network
@@ -519,7 +585,7 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 
         # NEW FEATURE 14: A/B Testing Suite
         if len(categorical_cols) >= 1 and len(numeric_cols) >= 1:
-            with st.expander("📈 A/B Testing Suite", expanded=False): # Keep it collapsed by default
+            with st.expander("🧪 A/B Testing & ANOVA Suite", expanded=False): # Keep it collapsed by default
                 st.subheader("Statistical Significance Testing")
 
                 group_col = st.selectbox("Group Column (A/B)", categorical_cols)
@@ -649,7 +715,7 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
                     st.info("Select a categorical group column and a numeric metric column to perform A/B testing.")
                     
         # NEW FEATURE 15: Geospatial Data Visualization
-        with st.expander("🌍 Geospatial Data Visualization"):
+        with st.expander("🗺️ Geospatial Data Visualization"):
             st.subheader("Map Data Points")
             potential_lat_cols = [col for col in numeric_cols if 'lat' in col.lower()]
             potential_lon_cols = [col for col in numeric_cols if 'lon' in col.lower() or 'lng' in col.lower()]
@@ -698,7 +764,7 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
                 st.info("Select valid latitude and longitude columns to display the map.")
 
         # NEW FEATURE 16: K-Means Clustering Analysis
-        with st.expander("🧩 K-Means Clustering Analysis"):
+        with st.expander("💠 K-Means Clustering Analysis"):
             st.subheader("Unsupervised Clustering")
             if len(numeric_cols) >= 2:
                 cluster_features = st.multiselect("Select Features for Clustering", numeric_cols, default=numeric_cols[:min(2, len(numeric_cols))], key="kmeans_features")
@@ -741,7 +807,7 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
                 st.info("Clustering requires at least two numeric columns.")
 
         # NEW FEATURE 17: Data Transformation Tools
-        with st.expander("🛠️ Data Transformation Tools"):
+        with st.expander("🔄 Data Transformation Tools"):
             st.subheader("Apply Common Transformations")
             if numeric_cols:
                 transform_col = st.selectbox("Select Numeric Column to Transform", numeric_cols, key="transform_col_select")
@@ -800,7 +866,7 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
                 st.info("No numeric columns available for transformation.")
 
         # NEW FEATURE 18: Interactive Pivot Table Creator
-        with st.expander("📄 Interactive Pivot Table Creator"):
+        with st.expander("📋 Interactive Pivot Table Creator"):
             st.subheader("Summarize Data with Pivot Tables")
             if (categorical_cols or date_cols) and numeric_cols:
                 pivot_rows_options = categorical_cols + date_cols
@@ -826,7 +892,7 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 
         # NEW FEATURE 19: Simple Time Series Forecasting
         if date_cols and numeric_cols:
-            with st.expander("📈 Simple Time Series Forecasting (Exponential Smoothing)"):
+            with st.expander("📉 Simple Time Series Forecasting (Exponential Smoothing)"):
                 st.subheader("Basic Forecasting")
                 forecast_date_col = st.selectbox("Select Date Column for Forecasting", date_cols, key="forecast_date")
                 forecast_value_col = st.selectbox("Select Value Column for Forecasting", numeric_cols, key="forecast_value")
@@ -878,20 +944,20 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
                     st.info("Select a date column and a numeric value column for forecasting.")
 
         # NEW FEATURE 20: Custom Theme Builder (Renumbered)
-        with st.expander("🎨 Custom Theme Builder"): # Was Feature 15
+        with st.expander("🖌️ Custom Theme Designer"): # Was Feature 15
             st.subheader("Create Your Custom Theme")
             
             col1, col2 = st.columns(2)
             with col1:
-                primary_color = st.color_picker("Primary Color", "#667eea")
-                secondary_color = st.color_picker("Secondary Color", "#764ba2") 
-                text_color = st.color_picker("Text Color", "#262730")
+                primary_color = st.color_picker("Primary Color", "#38B2AC")      # Teal
+                secondary_color = st.color_picker("Secondary Color", "#805AD5")  # Purple
+                text_color = st.color_picker("Text Color", "#E2E8F0")            # Light Gray
             with col2:
-                bg_color = st.color_picker("Background Color", "#ffffff")
-                accent_color = st.color_picker("Accent Color", "#f39c12")
+                bg_color = st.color_picker("Background Color", "#1A202C")        # Very Dark Blue/Gray
+                accent_color = st.color_picker("Accent Color", "#ED8936")        # Orange
                 
             theme_name = st.text_input("Theme Name", "My Custom Theme")
-            
+
             if st.button("Apply Custom Theme"):
                 custom_css = f"""
                 <style>
@@ -900,11 +966,21 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
                     color: {text_color};
                 }}
                 .metric-card {{
-                    background: linear-gradient(45deg, {primary_color} 0%, {secondary_color} 100%);
+                    background: linear-gradient(135deg, {primary_color} 0%, {secondary_color} 100%);
+                    color: {text_color}; /* Ensure text color contrasts with new gradient */
+                }}
+                .insight-box {{
+                    background: #2D3748; /* Or a slightly lighter shade of bg_color */
+                    border-left-color: {accent_color};
+                    color: {text_color};
                 }}
                 .stButton > button {{
                     background-color: {accent_color};
-                    color: white;
+                    color: {bg_color}; /* Text color for button, ensure contrast */
+                    border: 1px solid {accent_color};
+                }}
+                div[data-testid="stExpander"] > div:first-child summary {{
+                    color: {text_color};
                 }}
                 </style>
                 """
@@ -933,23 +1009,23 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
         st.markdown("---")
         col1, col2, col3 = st.columns(3)
         with col1:
-            st.info(f"Session: {datetime.now().strftime('%H:%M:%S')}")
+            st.info(f"🕒 Session: {datetime.now().strftime('%H:%M:%S')}")
         with col2:
-            st.info(f"Theme: {selected_theme}")
+            st.info(f"🎨 Theme: {selected_theme}")
         with col3:
-            st.info(f"Datasets: {len(datasets)}")
+            st.info(f"📚 Datasets: {len(datasets)}")
 
 else:
-    st.info("👆 Upload files to start creating your dashboard")
+    st.info("📂 Please upload your data files to begin exploring! 🚀")
     
     # Sample data generator for testing
-    if st.button("🎲 Generate Sample Data"):
+    if st.button("🎲 Generate Sample Data & Explore Features"):
         sample_data = {
             'Date': pd.date_range('2023-01-01', periods=100),
             'Sales': np.random.randint(100, 1000, 100),
             'Region': np.random.choice(['North', 'South', 'East', 'West'], 100),
             'Temperature': np.random.normal(20, 5, 100),
-            'Revenue': np.random.randint(1000, 5000, 100)
+            'Revenue': np.random.uniform(1000, 5000, 100).round(2)
         }
         df = pd.DataFrame(sample_data)
         st.success("Sample data generated! Use this to explore features.")
