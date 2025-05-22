@@ -1639,18 +1639,18 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
                                 """
                                 if pd.api.types.is_numeric_dtype(col_data) and not col_data.dropna().empty:
                                     card_html += f"""
-                                    <p><strong>Min:</strong> {col_data.min():.2f}</p>
-                                    <p><strong>Max:</strong> {col_data.max():.2f}</p>
-                                    <p><strong>Mean:</strong> {col_data.mean():.2f}</p>
+                                    <p><strong>Min:</strong> {col_data.min():.2f}<br>
+                                    <strong>Max:</strong> {col_data.max():.2f}<br>
+                                    <strong>Mean:</strong> {col_data.mean():.2f}</p>
                                     """
                                 elif pd.api.types.is_datetime64_any_dtype(col_data) and not col_data.dropna().empty:
                                     try:
                                         card_html += f"""
-                                        <p><strong>Min Date:</strong> {col_data.min().strftime('%Y-%m-%d')}</p>
-                                        <p><strong>Max Date:</strong> {col_data.max().strftime('%Y-%m-%d')}</p>
+                                        <p><strong>Min Date:</strong> {col_data.min().strftime('%Y-%m-%d')}<br>
+                                        <strong>Max Date:</strong> {col_data.max().strftime('%Y-%m-%d')}</p>
                                         """
                                     except AttributeError: # Handle NaT if min/max results in NaT
-                                        card_html += "<p><strong>Min Date:</strong> N/A</p><p><strong>Max Date:</strong> N/A</p>"
+                                        card_html += "<p><strong>Min Date:</strong> N/A<br><strong>Max Date:</strong> N/A</p>"
                                 card_html += "</div>"
                                 st.markdown(card_html, unsafe_allow_html=True)
             else:
