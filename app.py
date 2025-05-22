@@ -1360,15 +1360,15 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
                                 st.plotly_chart(fig_imp_dt, use_container_width=True)
 
                                 st.subheader("Decision Tree Structure")
-                                tree_viz_method = st.radio("Tree Visualization", ["Text Representation", "Graphical Plot (Matplotlib)"], key="dt_viz_method")
-                                if tree_viz_method == "Text Representation":
-                                    st.text(export_text(model_dt, feature_names=list(X_train_dt.columns)))
-                                elif tree_viz_method == "Graphical Plot (Matplotlib)":
-                                    if max_depth_dt > 7: # Suggest limiting depth for readability
-                                        st.warning("Plotting a very deep tree might be slow and hard to read. Consider reducing Max Depth for visualization.")
-                                    fig_tree, ax_tree = plt.subplots(figsize=(max(15, max_depth_dt*2), max(10, max_depth_dt*1.5))) # Dynamic figsize
-                                    plot_tree(model_dt, filled=True, feature_names=list(X_train_dt.columns), class_names=class_names_dt, ax=ax_tree, fontsize=8, rounded=True)
-                                    st.pyplot(fig_tree)
+                                st.write("#### Text Representation:")
+                                st.text(export_text(model_dt, feature_names=list(X_train_dt.columns)))
+                                
+                                st.write("#### Graphical Plot (Matplotlib):")
+                                if max_depth_dt > 7: # Suggest limiting depth for readability
+                                    st.warning("Plotting a very deep tree might be slow and hard to read. Consider reducing Max Depth for visualization.")
+                                fig_tree, ax_tree = plt.subplots(figsize=(max(15, max_depth_dt*2), max(10, max_depth_dt*1.5))) # Dynamic figsize
+                                plot_tree(model_dt, filled=True, feature_names=list(X_train_dt.columns), class_names=class_names_dt, ax=ax_tree, fontsize=8, rounded=True)
+                                st.pyplot(fig_tree)
                         else:
                             st.warning("Not enough data or features after preprocessing for Decision Tree training.")
                     else:
