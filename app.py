@@ -1497,6 +1497,93 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
             else:
                 st.info("Cross-tabulation requires at least two categorical columns.")
 
+        # NEW FEATURE: Auto Data Merger (Smart Join Suggestion Tool)
+        with st.expander("🤝 Auto Data Merger (Smart Join Suggestion Tool)"):
+            st.subheader("Merge Two Datasets")
+            if len(datasets) >= 2:
+                dataset_names = list(datasets.keys())
+
+                col_merge1, col_merge2 = st.columns(2)
+                with col_merge1:
+                    ds1_name = st.selectbox("Select First Dataset (Left)", dataset_names, key="merge_ds1_name")
+                with col_merge2:
+                    ds2_options = [name for name in dataset_names if name != ds1_name] if ds1_name else dataset_names
+                    ds2_name = st.selectbox("Select Second Dataset (Right)", ds2_options, key="merge_ds2_name", index=0 if ds2_options else -1)
+
+                if ds1_name and ds2_name and ds1_name != ds2_name:
+                    df1_merge = datasets[ds1_name]
+                    df2_merge = datasets[ds2_name]
+
+                    st.write(f"**Dataset 1 ({ds1_name}) Columns:** {', '.join(df1_merge.columns)}")
+                    st.write(f"**Dataset 2 ({ds2_name}) Columns:** {', '.join(df2_merge.columns)}")
+
+                    col_key1, col_key2 = st.columns(2)
+                    with col_key1:
+                        left_keys = st.multiselect(f"Select Join Key(s) for {ds1_name}", df1_merge.columns.tolist(), key="merge_left_keys")
+                    with col_key2:
+                        right_keys = st.multiselect(f"Select Join Key(s) for {ds2_name}", df2_merge.columns.tolist(), key="merge_right_keys")
+
+                    join_type = st.selectbox(
+                        "Select Join Type",
+                        ["inner", "left", "right", "outer"],
+                        key="merge_join_type"
+                    )
+
+                    default_new_name = f"Merged_{ds1_name.replace('Dataset_','')}_and_{ds2_name.replace('Dataset_','')}"
+                    if left_keys and right_keys:
+                        default_new_name = f"Merged_{ds1_name.replace('Dataset_','')}_on_{'_'.join(left_keys)}_with_{ds2_name.replace('Dataset_','')}_on_{'_'.join(right_keys)}"
+                    new_merged_dataset_name = st.text_input("Name for the New Merged Dataset", value=default_new_name, key="merge_new_name")
+
+                    # Fuzzy match placeholder
+                    st.caption("Future enhancement idea: `Suggest Fuzzy Match for Keys` (requires additional libraries and logic).")
+
+                    if left_keys and right_keys:
+                        if len(left_keys) != len(right_keys):
+                            st.warning("The number of join keys selected for each dataset must be the same.")
+                        else:
+                            # Prepare suffixes for merge
+                            s1_suffix_base = ds1_name.replace("Dataset_", "").replace(" ", "")
+                            s2_suffix_base = ds2_name.replace("Dataset_", "").replace(" ", "")
+                            suf1 = '_' + re.sub(r'\W+', '', s1_suffix_base) if s1_suffix_base else '_left'
+                            suf2 = '_' + re.sub(r'\W+', '', s2_suffix_base) if s2_suffix_base else '_right'
+                            if suf1 == suf2: # Avoid identical suffixes
+                                suf1 = f"{suf1}1"
+                                suf2 = f"{suf2}2"
+
+                            if st.button("Preview Merged Data", key="merge_preview_button"):
+                                try:
+                                    merged_preview_df = pd.merge(df1_merge, df2_merge, left_on=left_keys, right_on=right_keys, how=join_type, suffixes=(suf1, suf2))
+                                    st.write("#### Merged Data Preview (First 5 rows):")
+                                    st.dataframe(merged_preview_df.head())
+                                    st.write(f"Shape of merged data preview: {merged_preview_df.shape}")
+                                except Exception as e:
+                                    st.error(f"Error during merge preview: {e}")
+
+                            if st.button("Confirm and Add Merged Dataset", key="merge_confirm_button"):
+                                if not new_merged_dataset_name:
+                                    st.error("Please provide a name for the new merged dataset.")
+                                elif new_merged_dataset_name in datasets:
+                                    st.error(f"A dataset named '{new_merged_dataset_name}' already exists. Please choose a different name.")
+                                else:
+                                    try:
+                                        merged_df = pd.merge(df1_merge, df2_merge, left_on=left_keys, right_on=right_keys, how=join_type, suffixes=(suf1, suf2))
+                                        datasets[new_merged_dataset_name] = merged_df
+                                        st.success(f"Dataset '{new_merged_dataset_name}' added successfully with {merged_df.shape[0]} rows and {merged_df.shape[1]} columns. Select it from the primary dataset dropdown.")
+                                        st.rerun()
+                                    except Exception as e:
+                                        st.error(f"Error merging and adding dataset: {e}")
+                    elif (left_keys and not right_keys) or (not left_keys and right_keys):
+                        st.warning("Please select join keys for both datasets if you intend to join on specific columns.")
+                    else:
+                        st.info("Select join key(s) for both datasets to proceed with merging.")
+                elif ds1_name and ds2_name and ds1_name == ds2_name:
+                    st.warning("Please select two different datasets to merge.")
+
+            elif uploaded_files and len(datasets) < 2:
+                st.warning("You need to upload at least two datasets to use the merge tool.")
+            else:
+                st.info("Upload at least two datasets to enable the data merging feature.")
+
         # NEW FEATURE 29: Custom Theme Builder
         with st.expander("🖌️ Custom Theme Designer"):
             st.subheader("Create Your Custom Theme")
