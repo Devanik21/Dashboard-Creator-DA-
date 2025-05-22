@@ -341,6 +341,59 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
                 st.text_area("Generated Report", report, height=300)
                 st.download_button("Download Report", report, file_name="analysis_report.txt")
 
+        # AI-Powered Insights with Gemini API
+        with st.expander("🧠 AI-Powered Insights", expanded=True):
+            st.subheader("Ask Questions About Your Data")
+            
+            if gemini_api_key:
+                user_question = st.text_input("Ask a question about your data:", 
+                                             placeholder="E.g., What are the key trends in this dataset?")
+                
+                if user_question:
+                    # Prepare data summary
+                    buffer = io.StringIO()
+                    df.describe().to_csv(buffer)
+                    data_summary = buffer.getvalue()
+                    
+                    # Prepare data sample
+                    buffer = io.StringIO()
+                    df.head(5).to_csv(buffer)
+                    data_sample = buffer.getvalue()
+                    
+                    # Prepare column info
+                    column_info = "\n".join([
+                        f"- {col} ({df[col].dtype}): {df[col].nunique()} unique values" 
+                        for col in df.columns
+                    ])
+                    
+                    # Create prompt
+                    prompt = f"""
+                    I have a dataset with {df.shape[0]} rows and {df.shape[1]} columns.
+                    
+                    Column information:
+                    {column_info}
+                    
+                    Data sample:
+                    {data_sample}
+                    
+                    Summary statistics:
+                    {data_summary}
+                    
+                    Question: {user_question}
+                    
+                    Please provide a helpful, concise, and accurate answer based on this data.
+                    """
+                    
+                    try:
+                        model = genai.GenerativeModel("gemini-2.0-flash")
+                        response = model.generate_content(prompt)
+                        st.write("AI Response:")
+                        st.write(response.text)
+                    except Exception as e:
+                        st.error(f"Gemini API Error: {str(e)}")
+            else:
+                st.info("Enter your Gemini API key in the sidebar to enable AI insights.")
+
         # Interactive visualization builder
         with st.expander("📊 Quick Visualization Builder"):
             if numeric_cols or categorical_cols:
