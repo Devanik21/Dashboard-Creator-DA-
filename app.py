@@ -26,6 +26,8 @@ import time # Import the time module
 import warnings # Import locally to keep dependencies clear
 from scipy import stats
 from statsmodels.tsa.holtwinters import ExponentialSmoothing
+import nltk # For Sentiment Analysis
+from nltk.sentiment.vader import SentimentIntensityAnalyzer # For Sentiment Analysis
 warnings.filterwarnings('ignore')
 
 # Page configuration
@@ -1002,8 +1004,108 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
             else:
                 st.info("PCA requires at least two numeric columns in the dataset.")
 
-        # NEW FEATURE 21: Custom Theme Builder (Renumbered)
-        with st.expander("🖌️ Custom Theme Designer"): # Was Feature 20
+        # NEW FEATURE 21: Sentiment Analysis for Text Columns
+        with st.expander("💬 Sentiment Analysis for Text Data"):
+            st.subheader("Analyze Sentiment in Text Columns")
+            
+            # Attempt to download vader_lexicon if not found
+            try:
+                nltk.data.find('sentiment/vader_lexicon.zip')
+            except nltk.downloader.DownloadError:
+                st.info("Downloading VADER lexicon for sentiment analysis (one-time download)...")
+                try:
+                    nltk.download('vader_lexicon')
+                    st.success("VADER lexicon downloaded successfully!")
+                except Exception as e:
+                    st.error(f"Could not download VADER lexicon: {e}. Sentiment analysis might not work.")
+            except Exception as e: # Catch other potential errors with nltk.data.find
+                st.warning(f"Could not verify VADER lexicon: {e}")
+
+            text_cols = categorical_cols # Text data is often in categorical columns
+            if text_cols:
+                selected_text_col = st.selectbox(
+                    "Select Text Column for Sentiment Analysis",
+                    text_cols,
+                    key="sentiment_text_col"
+                )
+
+                if selected_text_col and df[selected_text_col].dtype == 'object':
+                    if st.button("Analyze Sentiment", key="analyze_sentiment_button"):
+                        sid = SentimentIntensityAnalyzer()
+                        
+                        # Ensure the column is string type and handle NaNs
+                        texts_to_analyze = df[selected_text_col].astype(str).fillna('')
+                        
+                        sentiments = texts_to_analyze.apply(lambda text: sid.polarity_scores(text))
+                        sentiment_df = pd.DataFrame(list(sentiments))
+                        sentiment_df.index = df.index # Align index with original df
+
+                        st.write("#### Sentiment Score Distribution (Compound Score)")
+                        fig_sentiment_hist = px.histogram(sentiment_df, x="compound", nbins=30, title="Distribution of Compound Sentiment Scores", color_discrete_sequence=[custom_color])
+                        st.plotly_chart(fig_sentiment_hist, use_container_width=True)
+
+                        st.write("#### Average Sentiment Scores")
+                        st.json({
+                            "Average Compound": f"{sentiment_df['compound'].mean():.3f}",
+                            "Average Positive": f"{sentiment_df['pos'].mean():.3f}",
+                            "Average Neutral": f"{sentiment_df['neu'].mean():.3f}",
+                            "Average Negative": f"{sentiment_df['neg'].mean():.3f}",
+                        })
+
+                        if st.checkbox("Add Sentiment Scores to DataFrame?", key="add_sentiment_cols_cb"):
+                            df[f'{selected_text_col}_sentiment_compound'] = sentiment_df['compound']
+                            df[f'{selected_text_col}_sentiment_pos'] = sentiment_df['pos']
+                            df[f'{selected_text_col}_sentiment_neu'] = sentiment_df['neu']
+                            df[f'{selected_text_col}_sentiment_neg'] = sentiment_df['neg']
+                            st.success(f"Sentiment scores from '{selected_text_col}' added to DataFrame. Rerun other analyses if needed.")
+                            st.rerun()
+                elif selected_text_col:
+                    st.warning(f"Column '{selected_text_col}' does not appear to be a text column (object/string type).")
+            else:
+                st.info("No categorical (potential text) columns found for sentiment analysis.")
+
+        # NEW FEATURE 22: User-Defined Calculated Fields
+        with st.expander("🧮 User-Defined Calculated Fields"):
+            st.subheader("Create New Columns from Formulas")
+            
+            new_col_name = st.text_input("Enter Name for New Calculated Column", key="new_calc_col_name")
+            formula = st.text_input("Enter Formula (e.g., 'ColumnA * 2 + ColumnB / ColumnC')", 
+                                    placeholder="Use existing column names. Available: " + ", ".join(df.columns),
+                                    key="calc_col_formula")
+            st.caption("You can use standard arithmetic operators (+, -, *, /) and numpy functions (e.g., np.log(ColumnA)). Ensure column names are exactly as in the dataset.")
+
+            if new_col_name and formula:
+                if st.button("Preview & Add Calculated Column", key="add_calc_col_button"):
+                    try:
+                        # For safety and convenience, df.eval() is good for simple arithmetic.
+                        # For more complex operations involving np, a more controlled eval might be needed or provide specific functions.
+                        # Here, we'll try df.eval and fall back to a more general eval if np is used.
+                        if "np." in formula: # If numpy functions are used
+                            calculated_series = df.eval(formula, engine='python', local_dict={'np': np}, global_dict={})
+                        else:
+                            calculated_series = df.eval(formula, engine='python') # engine='python' allows more complex expressions
+                        
+                        st.write("#### Preview of Calculated Column (First 5 Rows):")
+                        st.dataframe(calculated_series.head())
+
+                        if st.checkbox(f"Confirm and Add '{new_col_name}' to DataFrame?", key="confirm_add_calc_col"):
+                            df[new_col_name] = calculated_series
+                            st.success(f"Calculated column '{new_col_name}' added to DataFrame. Rerun other analyses if needed.")
+                            # Update column lists
+                            if pd.api.types.is_numeric_dtype(df[new_col_name]) and new_col_name not in numeric_cols:
+                                numeric_cols.append(new_col_name)
+                            elif df[new_col_name].dtype == 'object' and new_col_name not in categorical_cols:
+                                categorical_cols.append(new_col_name)
+                            st.rerun()
+
+                    except Exception as e:
+                        st.error(f"Error calculating field '{new_col_name}': {e}")
+                        st.info("Please check your formula and ensure column names are correct and operations are valid.")
+            elif new_col_name or formula:
+                st.warning("Please provide both a name and a formula for the calculated column.")
+
+        # NEW FEATURE 23: Custom Theme Builder (Renumbered)
+        with st.expander("🖌️ Custom Theme Designer"): # Was Feature 21
             st.subheader("Create Your Custom Theme")
             
             col1, col2 = st.columns(2)
