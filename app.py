@@ -303,7 +303,26 @@ if uploaded_files:
                         if selected_values:
                             df = df[df[col].isin(selected_values)]
             
-            st.info(f"Filtered dataset: {df.shape[0]} rows × {df.shape[1]} columns")
+            st.success(f"Filtered dataset: {df.shape[0]} rows × {df.shape[1]} columns")
+
+            if not df.empty:
+                st.markdown("#### Filtered Data Preview (First 100 rows):")
+                st.dataframe(df.head(100)) # Show a preview
+
+                # Download button for the filtered data
+                @st.cache_data # Cache the conversion to prevent re-computation on every rerun
+                def convert_df_to_csv(df_to_convert):
+                    return df_to_convert.to_csv(index=False).encode('utf-8')
+
+                csv_filtered = convert_df_to_csv(df)
+                st.download_button(
+                    label="📥 Download Filtered Data as CSV",
+                    data=csv_filtered,
+                    file_name=f"filtered_{selected_dataset.lower().replace('dataset_','')}.csv",
+                    mime="text/csv",
+                )
+            else:
+                st.warning("The current filter selection results in an empty dataset.")
 
         # NEW FEATURE 7: Automated statistical testing
         with st.expander("📈 Statistical Analysis Suite"):
