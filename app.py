@@ -1752,3 +1752,6 @@ else:
 
 with st.sidebar:
     st.image("d1.jpg", caption="We called it language. It was a lock....", use_container_width=True)
+
+
+st.image("d4.jpg", caption="We called it language. It was a lock....", use_container_width=True)
