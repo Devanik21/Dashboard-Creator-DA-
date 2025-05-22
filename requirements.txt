@@ -10,3 +10,4 @@ folium
 streamlit-folium
 google-generativeai
 openpyxl
+statsmodels 
