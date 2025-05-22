@@ -170,32 +170,8 @@ gemini_api_key = st.sidebar.text_input("Gemini API Key", type="password")
 if gemini_api_key:
     try:
         genai.configure(api_key=gemini_api_key)
-        st.sidebar.success("Gemini API Key configured.")
     except Exception as e:
         st.sidebar.error(f"API Error: {str(e)}")
-
-# NEW FEATURE: Feature Suggestions Box
-st.sidebar.header("🗣️ Feedback & Suggestions")
-
-if 'show_suggestion_box' not in st.session_state:
-    st.session_state.show_suggestion_box = False
-
-if st.sidebar.button("🧁 Feature Suggestions?"):
-    st.session_state.show_suggestion_box = not st.session_state.show_suggestion_box
-
-if st.session_state.show_suggestion_box:
-    suggestion_text = st.sidebar.text_area("What new features or improvements would you like to see?", key="suggestion_text_area_input")
-    if st.sidebar.button("Submit Suggestion", key="submit_suggestion_btn"):
-        if suggestion_text:
-            print(f"User Feature Suggestion: {suggestion_text}") # Log to console
-            st.sidebar.success("Thank you for your suggestion! It has been noted.")
-            st.session_state.show_suggestion_box = False # Hide after submission
-            # To clear the text area for its next appearance, delete its key from session_state.
-            if "suggestion_text_area_input" in st.session_state:
-                del st.session_state["suggestion_text_area_input"]
-            st.rerun() # Rerun to update the UI (hides the box and ensures text_area is fresh if reopened)
-        else:
-            st.sidebar.warning("Please enter your suggestion before submitting.")
 
 # Main title with metrics
 st.title("🚀 Advanced Data Explorer & Visualizer")
