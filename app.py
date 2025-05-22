@@ -40,7 +40,7 @@ st.set_page_config(layout="wide", page_title="Advanced Dashboard Creator", page_
 with st.sidebar:
     st.image("d2.jpg", caption="We called it language. It was a lock....", use_container_width=True)
 
-st.image("d3.jpg", caption="We called it language. It was a lock....", use_container_width=True)
+
 # Custom CSS for better styling
 st.markdown("""
 <style>
@@ -179,6 +179,7 @@ if gemini_api_key:
 
 # Main title with metrics
 st.title("Advanced Data Explorer & Visualizer")
+st.image("d3.jpg", caption="We called it language. It was a lock....", use_container_width=True)
 st.markdown("### 🔮 Upload your data to unlock insights and visualizations!")
 
 # NEW FEATURE 2: Multiple file upload support
