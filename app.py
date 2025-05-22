@@ -23,7 +23,7 @@ import base64
 import re
 from datetime import datetime, timedelta
 import time # Import the time module
-import warnings
+import warnings # Import locally to keep dependencies clear
 from scipy import stats
 warnings.filterwarnings('ignore')
 
@@ -551,7 +551,7 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
                                 st.metric(f"{groups[1]} Size", len(group_b_data))
 
                             # Statistical Test (T-test)
-                            from scipy import stats # Import locally to keep dependencies clear
+                            # from scipy import stats # Already imported globally or can be kept local if preferred
 
                             # Perform t-test
                             t_stat, p_value = stats.ttest_ind(group_a_data, group_b_data, equal_var=False) # Welch's t-test by default
@@ -628,7 +628,29 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
                         else:
                             st.warning("Need at least 6 samples in each group for reliable testing.")
                     elif len(groups) > 2:
-                        st.info("A/B testing is designed for comparing exactly two groups. For multiple groups, consider using ANOVA (Analysis of Variance), which is not yet implemented in this suite.")
+                        st.subheader(f"ANOVA Test: Comparing {len(groups)} Groups for '{metric_col}'")
+                        st.markdown(f"Since you have more than two groups in '{group_col}', an ANOVA (Analysis of Variance) test will be performed to check for significant differences in the means of '{metric_col}' across these groups.")
+
+                        # Prepare data for ANOVA: list of arrays, one for each group
+                        group_data_for_anova = [df[df[group_col] == group_name][metric_col].dropna() for group_name in groups]
+                        
+                        # Filter out groups with insufficient data for ANOVA (e.g., less than 2 samples)
+                        group_data_for_anova_filtered = [g for g in group_data_for_anova if len(g) >= 2]
+
+                        if len(group_data_for_anova_filtered) >= 2: # Need at least two groups for ANOVA
+                            from scipy.stats import f_oneway # Specific import for ANOVA
+                            f_stat, p_value_anova = f_oneway(*group_data_for_anova_filtered)
+
+                            st.metric("ANOVA F-statistic", f"{f_stat:.3f}")
+                            st.metric("ANOVA P-value", f"{p_value_anova:.4f}")
+
+                            alpha_anova = st.slider("ANOVA Significance Level (Alpha)", 0.01, 0.10, 0.05, 0.01, key="anova_alpha")
+                            if p_value_anova < alpha_anova:
+                                st.success(f"✅ **Statistically Significant** (p < {alpha_anova}). There is a significant difference in '{metric_col}' means across the groups.")
+                            else:
+                                st.warning(f"❌ **Not Statistically Significant** (p ≥ {alpha_anova}). No significant difference found in '{metric_col}' means across the groups.")
+                        else:
+                            st.warning("ANOVA requires at least two groups with sufficient data (>=2 samples per group) for comparison.")
                     elif len(groups) < 2:
                         st.warning(f"The selected group column '{group_col}' has fewer than 2 distinct groups. A/B testing requires at least two groups to compare.")
                 else:
