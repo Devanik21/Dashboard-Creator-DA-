@@ -9,7 +9,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from sklearn.cluster import KMeans
 from sklearn.ensemble import IsolationForest
-from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.preprocessing import OneHotEncoder, StandardScaler, MinMaxScaler
 from sklearn.decomposition import PCA
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
@@ -25,6 +25,7 @@ from datetime import datetime, timedelta
 import time # Import the time module
 import warnings # Import locally to keep dependencies clear
 from scipy import stats
+from statsmodels.tsa.holtwinters import ExponentialSmoothing
 warnings.filterwarnings('ignore')
 
 # Page configuration
@@ -113,14 +114,9 @@ if uploaded_files:
                 duplicates = df.duplicated().sum()
                 st.markdown(f'<div class="metric-card"><h3>{duplicates}</h3><p>Duplicates</p></div>', unsafe_allow_html=True)
             
-            # Data quality score
             missing_pct = (df.isnull().sum().sum() / (df.shape[0] * df.shape[1])) * 100
             quality_score = max(0, 100 - missing_pct - (duplicates/df.shape[0]*10))
             st.markdown(f'<div class="insight-box"><strong>Data Quality Score: {quality_score:.1f}/100</strong><br>Based on missing values and duplicate records</div>', unsafe_allow_html=True)
-
-        # Identify column types
-        numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
-        categorical_cols = df.select_dtypes(include=['object', 'category']).columns.tolist()
         
         # NEW FEATURE 5: Smart data type detection and conversion
         with st.expander("🔍 Smart Data Type Detection"):
@@ -128,7 +124,7 @@ if uploaded_files:
             suggestions = []
             
             for col in df.columns:
-                if col in categorical_cols:
+                if df[col].dtype == 'object': # Check object columns for potential conversion
                     # Check if it's actually numeric
                     try:
                         pd.to_numeric(df[col].dropna())
@@ -143,12 +139,10 @@ if uploaded_files:
             
             if suggestions:
                 for col, suggested_type, reason in suggestions:
-                    if st.checkbox(f"Convert '{col}' to {suggested_type} ({reason})"):
+                    if st.checkbox(f"Convert '{col}' to {suggested_type} ({reason})", key=f"convert_{col}_{suggested_type}"):
                         try:
                             if suggested_type == "numeric":
                                 df[col] = pd.to_numeric(df[col], errors='coerce')
-                                numeric_cols.append(col)
-                                categorical_cols.remove(col)
                             elif suggested_type == "datetime":
                                 df[col] = pd.to_datetime(df[col], errors='coerce')
                             st.success(f"Converted {col} to {suggested_type}")
@@ -156,6 +150,11 @@ if uploaded_files:
                             st.error(f"Conversion failed: {str(e)}")
             else:
                 st.info("No conversion suggestions found")
+
+        # Globally define/update column type lists after potential conversions in Feature 5
+        numeric_cols = df.select_dtypes(include=np.number).columns.tolist()
+        categorical_cols = df.select_dtypes(include=['object', 'category']).columns.tolist()
+        date_cols = df.select_dtypes(include='datetime').columns.tolist()
 
         # NEW FEATURE 6: Advanced filtering system
         with st.expander("🔧 Advanced Data Filtering"):
@@ -452,19 +451,12 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
                 st.plotly_chart(fig, use_container_width=True)
 
         # NEW FEATURE 12: Time Series Analysis
-        date_cols = df.select_dtypes(include=['datetime']).columns.tolist()
-        for col in df.columns:
-            if 'date' in col.lower() or 'time' in col.lower():
-                try:
-                    df[col] = pd.to_datetime(df[col])
-                    date_cols.append(col)
-                except: pass
-        
+        # Uses globally defined date_cols, numeric_cols
         if date_cols and numeric_cols:
             with st.expander("📊 Time Series Analysis"):
                 st.subheader("Trend Analysis & Forecasting")
-                date_col = st.selectbox("Date Column", date_cols)
-                value_col = st.selectbox("Value Column", numeric_cols)
+                date_col = st.selectbox("Date Column", date_cols, key="tsa_date_col")
+                value_col = st.selectbox("Value Column", numeric_cols, key="tsa_value_col")
                 
                 # Prepare time series data
                 ts_data = df[[date_col, value_col]].dropna().sort_values(date_col)
@@ -656,8 +648,237 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
                 else:
                     st.info("Select a categorical group column and a numeric metric column to perform A/B testing.")
                     
-        # NEW FEATURE 15: Custom Theme Builder
-        with st.expander("🎨 Custom Theme Builder"):
+        # NEW FEATURE 15: Geospatial Data Visualization
+        with st.expander("🌍 Geospatial Data Visualization"):
+            st.subheader("Map Data Points")
+            potential_lat_cols = [col for col in numeric_cols if 'lat' in col.lower()]
+            potential_lon_cols = [col for col in numeric_cols if 'lon' in col.lower() or 'lng' in col.lower()]
+
+            if not potential_lat_cols and not potential_lon_cols:
+                 st.info("No obvious latitude/longitude columns found. Please select manually if available.")
+
+            lat_col_default = potential_lat_cols[0] if potential_lat_cols else None
+            lon_col_default = potential_lon_cols[0] if potential_lon_cols else None
+
+            lat_col = st.selectbox("Select Latitude Column", numeric_cols, index=numeric_cols.index(lat_col_default) if lat_col_default and lat_col_default in numeric_cols else 0, key="geo_lat")
+            lon_col = st.selectbox("Select Longitude Column", numeric_cols, index=numeric_cols.index(lon_col_default) if lon_col_default and lon_col_default in numeric_cols else (1 if len(numeric_cols) > 1 else 0), key="geo_lon")
+            
+            if lat_col and lon_col:
+                map_df_viz = df[[lat_col, lon_col]].copy().dropna()
+                map_df_viz.columns = ['lat', 'lon'] # st.map expects columns named 'lat' and 'lon'
+
+                if not map_df_viz.empty and pd.api.types.is_numeric_dtype(map_df_viz['lat']) and pd.api.types.is_numeric_dtype(map_df_viz['lon']):
+                    # Filter out invalid lat/lon values
+                    map_df_viz = map_df_viz[(map_df_viz['lat'] >= -90) & (map_df_viz['lat'] <= 90)]
+                    map_df_viz = map_df_viz[(map_df_viz['lon'] >= -180) & (map_df_viz['lon'] <= 180)]
+
+                    if not map_df_viz.empty:
+                        st.map(map_df_viz)
+
+                        if st.checkbox("Show Advanced Folium Map (more options)", key="folium_map_cb"):
+                            m = folium.Map(location=[map_df_viz['lat'].mean(), map_df_viz['lon'].mean()], zoom_start=5)
+                            tooltip_col_options = [None] + categorical_cols + numeric_cols
+                            tooltip_col = st.selectbox("Select Tooltip Column (Optional)", tooltip_col_options, key="folium_tooltip")
+                            
+                            # Iterate over original df to get tooltip and ensure correct lat/lon mapping
+                            for idx, row in df.dropna(subset=[lat_col, lon_col]).iterrows():
+                                popup_text = str(row[tooltip_col]) if tooltip_col and tooltip_col in df.columns and pd.notna(row[tooltip_col]) else f"Lat: {row[lat_col]:.4f}, Lon: {row[lon_col]:.4f}"
+                                folium.Marker(
+                                    [row[lat_col], row[lon_col]],
+                                    popup=popup_text
+                                ).add_to(m)
+                            folium_static(m)
+                    else:
+                        st.warning("No valid latitude/longitude data points to display after filtering.")
+                elif not map_df_viz.empty:
+                    st.warning("Selected latitude/longitude columns must be numeric.")
+                else:
+                    st.info("No data to display on map after dropping NaNs from selected columns.")
+            else:
+                st.info("Select valid latitude and longitude columns to display the map.")
+
+        # NEW FEATURE 16: K-Means Clustering Analysis
+        with st.expander("🧩 K-Means Clustering Analysis"):
+            st.subheader("Unsupervised Clustering")
+            if len(numeric_cols) >= 2:
+                cluster_features = st.multiselect("Select Features for Clustering", numeric_cols, default=numeric_cols[:min(2, len(numeric_cols))], key="kmeans_features")
+                if len(cluster_features) >= 2:
+                    num_clusters = st.slider("Number of Clusters (K)", 2, 10, 3, key="kmeans_k")
+                    
+                    cluster_data = df[cluster_features].dropna()
+                    if len(cluster_data) > num_clusters: # Ensure enough data points for clustering
+                        kmeans = KMeans(n_clusters=num_clusters, random_state=42, n_init='auto')
+                        cluster_data_copy = cluster_data.copy() # Avoid SettingWithCopyWarning
+                        cluster_data_copy['Cluster'] = kmeans.fit_predict(cluster_data_copy)
+                        
+                        st.write("Cluster Centers:")
+                        st.dataframe(pd.DataFrame(kmeans.cluster_centers_, columns=cluster_features))
+                        
+                        st.write(f"Data points per cluster:")
+                        st.dataframe(cluster_data_copy['Cluster'].value_counts().reset_index().rename(columns={'index':'Cluster', 'Cluster':'Count'}))
+
+                        if len(cluster_features) == 2:
+                            fig_cluster = px.scatter(cluster_data_copy, x=cluster_features[0], y=cluster_features[1], 
+                                                     color='Cluster', title="K-Means Clustering Results",
+                                                     color_continuous_scale=px.colors.qualitative.Plotly) # Use qualitative for distinct clusters
+                            st.plotly_chart(fig_cluster, use_container_width=True)
+                        elif len(cluster_features) > 2:
+                            st.info("More than 2 features selected. Visualizing first 2 principal components.")
+                            pca = PCA(n_components=2, random_state=42)
+                            principal_components = pca.fit_transform(cluster_data_copy.drop('Cluster', axis=1))
+                            pca_df = pd.DataFrame(data=principal_components, columns=['PC1', 'PC2'])
+                            pca_df['Cluster'] = cluster_data_copy['Cluster'].values # Ensure correct cluster assignment
+                            
+                            fig_pca_cluster = px.scatter(pca_df, x='PC1', y='PC2', color='Cluster',
+                                                         title="K-Means Clustering (PCA Visualization)",
+                                                         color_continuous_scale=px.colors.qualitative.Plotly)
+                            st.plotly_chart(fig_pca_cluster, use_container_width=True)
+                    else:
+                        st.warning("Not enough data points for the selected number of clusters after dropping NaNs.")
+                else:
+                    st.warning("Select at least two numeric features for clustering.")
+            else:
+                st.info("Clustering requires at least two numeric columns.")
+
+        # NEW FEATURE 17: Data Transformation Tools
+        with st.expander("🛠️ Data Transformation Tools"):
+            st.subheader("Apply Common Transformations")
+            if numeric_cols:
+                transform_col = st.selectbox("Select Numeric Column to Transform", numeric_cols, key="transform_col_select")
+                transform_type = st.selectbox("Transformation Type", ["None", "Log (Natural)", "Square Root", "Standard Scaler", "Min-Max Scaler"], key="transform_type_select")
+
+                if transform_col and transform_type != "None":
+                    original_series = df[transform_col].dropna()
+                    transformed_series_display = original_series.copy() # For display purposes
+
+                    try:
+                        if transform_type == "Log (Natural)":
+                            if (original_series <= 0).any():
+                                st.warning("Log transform requires all values to be positive. Applying to positive values only or add 1 if 0 is present.")
+                                transformed_series_display = np.log(original_series[original_series > 0])
+                            else:
+                                transformed_series_display = np.log(original_series)
+                        elif transform_type == "Square Root":
+                            if (original_series < 0).any():
+                                st.warning("Square root transform requires all values to be non-negative. Applying to non-negative values only.")
+                                transformed_series_display = np.sqrt(original_series[original_series >=0])
+                            else:
+                                transformed_series_display = np.sqrt(original_series)
+                        elif transform_type == "Standard Scaler":
+                            scaler = StandardScaler()
+                            transformed_series_display = scaler.fit_transform(original_series.values.reshape(-1, 1)).flatten()
+                        elif transform_type == "Min-Max Scaler":
+                            scaler = MinMaxScaler()
+                            transformed_series_display = scaler.fit_transform(original_series.values.reshape(-1, 1)).flatten()
+                        
+                        col_t1, col_t2 = st.columns(2)
+                        with col_t1:
+                            fig_before = px.histogram(original_series, title=f"Original: {transform_col}", nbins=30, color_discrete_sequence=[custom_color])
+                            st.plotly_chart(fig_before, use_container_width=True)
+                        with col_t2:
+                            fig_after = px.histogram(transformed_series_display, title=f"Transformed: {transform_col} ({transform_type})", nbins=30)
+                            st.plotly_chart(fig_after, use_container_width=True)
+
+                        if st.button(f"Apply '{transform_type}' to '{transform_col}' in DataFrame", key=f"apply_transform_{transform_col}"):
+                            # Apply transformation to the actual DataFrame column
+                            if transform_type == "Log (Natural)":
+                                df[transform_col] = df[transform_col].apply(lambda x: np.log(x) if pd.notna(x) and x > 0 else x)
+                            elif transform_type == "Square Root":
+                                df[transform_col] = df[transform_col].apply(lambda x: np.sqrt(x) if pd.notna(x) and x >= 0 else x)
+                            elif transform_type == "Standard Scaler":
+                                scaler_apply = StandardScaler()
+                                df[transform_col] = scaler_apply.fit_transform(df[[transform_col]].dropna()) # Apply only on non-NaN
+                            elif transform_type == "Min-Max Scaler":
+                                scaler_apply = MinMaxScaler()
+                                df[transform_col] = scaler_apply.fit_transform(df[[transform_col]].dropna()) # Apply only on non-NaN
+                            st.success(f"Transformation '{transform_type}' applied to '{transform_col}'. Rerun other analyses if needed.")
+                            st.rerun() 
+
+                    except Exception as e:
+                        st.error(f"Error during transformation: {e}")
+            else:
+                st.info("No numeric columns available for transformation.")
+
+        # NEW FEATURE 18: Interactive Pivot Table Creator
+        with st.expander("📄 Interactive Pivot Table Creator"):
+            st.subheader("Summarize Data with Pivot Tables")
+            if (categorical_cols or date_cols) and numeric_cols:
+                pivot_rows_options = categorical_cols + date_cols
+                pivot_cols_options = [None] + categorical_cols + date_cols # Allow no column selection
+                
+                pivot_rows = st.multiselect("Select Row(s)", pivot_rows_options, default=pivot_rows_options[0] if pivot_rows_options else None, key="pivot_rows")
+                pivot_cols_selected = st.multiselect("Select Column(s) (Optional)", pivot_cols_options, default=None, key="pivot_cols")
+                pivot_values = st.selectbox("Select Value Column (Numeric)", numeric_cols, index=0 if numeric_cols else None, key="pivot_values")
+                agg_func = st.selectbox("Aggregation Function", ["mean", "sum", "count", "min", "max", "median", "std", "var"], key="pivot_agg")
+
+                if pivot_rows and pivot_values:
+                    try:
+                        pivot_table_df = pd.pivot_table(df, index=pivot_rows, 
+                                                        columns=pivot_cols_selected if pivot_cols_selected else None, 
+                                                        values=pivot_values, aggfunc=agg_func, dropna=False) # Keep dropna=False to see all groups
+                        st.dataframe(pivot_table_df)
+                    except Exception as e:
+                        st.error(f"Could not create pivot table: {e}")
+                else:
+                    st.info("Select at least Rows and a Value column to create a pivot table.")
+            else:
+                st.info("Pivot tables require at least one categorical/date column and one numeric column.")
+
+        # NEW FEATURE 19: Simple Time Series Forecasting
+        if date_cols and numeric_cols:
+            with st.expander("📈 Simple Time Series Forecasting (Exponential Smoothing)"):
+                st.subheader("Basic Forecasting")
+                forecast_date_col = st.selectbox("Select Date Column for Forecasting", date_cols, key="forecast_date")
+                forecast_value_col = st.selectbox("Select Value Column for Forecasting", numeric_cols, key="forecast_value")
+                forecast_periods = st.number_input("Number of Periods to Forecast", min_value=1, max_value=365, value=12, key="forecast_periods")
+
+                if forecast_date_col and forecast_value_col:
+                    ts_forecast_data = df[[forecast_date_col, forecast_value_col]].copy().dropna()
+                    ts_forecast_data = ts_forecast_data.sort_values(forecast_date_col)
+                    ts_forecast_data = ts_forecast_data.set_index(forecast_date_col)
+                    
+                    # Resample to daily frequency, if multiple records per day, take mean. Fill missing with ffill.
+                    # This is a common preprocessing step for many time series models.
+                    # ts_forecast_data = ts_forecast_data[forecast_value_col].resample('D').mean().fillna(method='ffill')
+                    # For simplicity, let's use the data as is, assuming it's somewhat regular or user prepared it.
+                    # If data has no inherent frequency, infer_freq might fail.
+                    
+                    if len(ts_forecast_data) >= 10: # Minimum data for forecasting
+                        try:
+                            series_to_forecast = ts_forecast_data[forecast_value_col]
+                            # Attempt to infer frequency if not set, needed for ExponentialSmoothing forecast index
+                            inferred_freq = pd.infer_freq(series_to_forecast.index)
+                            if inferred_freq:
+                                series_to_forecast = series_to_forecast.asfreq(inferred_freq) # Ensure frequency
+                            
+                            model = ExponentialSmoothing(series_to_forecast, 
+                                                         initialization_method="estimated",
+                                                         trend='add', seasonal=None).fit() # Additive trend, no seasonality for simplicity
+                            forecast = model.forecast(forecast_periods)
+                            
+                            fig_forecast = go.Figure()
+                            fig_forecast.add_trace(go.Scatter(x=series_to_forecast.index, y=series_to_forecast,
+                                                            mode='lines', name='Actual', line=dict(color=custom_color)))
+                            fig_forecast.add_trace(go.Scatter(x=model.fittedvalues.index, y=model.fittedvalues,
+                                                            mode='lines', name='Fitted', line=dict(dash='dash')))
+                            fig_forecast.add_trace(go.Scatter(x=forecast.index, y=forecast.values,
+                                                            mode='lines', name='Forecast', line=dict(color='red')))
+                            fig_forecast.update_layout(title=f"Forecast for {forecast_value_col}",
+                                                     xaxis_title=forecast_date_col, yaxis_title=forecast_value_col)
+                            st.plotly_chart(fig_forecast, use_container_width=True)
+                            
+                            st.write("Forecasted Values:")
+                            st.dataframe(forecast.reset_index().rename(columns={'index': forecast_date_col, 0: 'Forecasted Value'}))
+
+                        except Exception as e:
+                            st.error(f"Forecasting error: {e}. Ensure data is suitable (e.g., enough points, numeric, regular time index).")
+                    else:
+                        st.warning("Not enough data points (minimum 10 required) for forecasting after processing.")
+                else:
+                    st.info("Select a date column and a numeric value column for forecasting.")
+
+        # NEW FEATURE 20: Custom Theme Builder (Renumbered)
+        with st.expander("🎨 Custom Theme Builder"): # Was Feature 15
             st.subheader("Create Your Custom Theme")
             
             col1, col2 = st.columns(2)
