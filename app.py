@@ -1235,7 +1235,7 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
                             default_strategy_index = 0 # mean
                             strategies = ['mean', 'median', 'most_frequent', 'constant']
                         elif is_categorical_selected:
-                            default_strategy_index = 2 # most_frequent
+                            default_strategy_index = 0 # 'most_frequent' is at index 0 for this list
                             strategies = ['most_frequent', 'constant']
                         else: # Mixed types or other, default to most_frequent
                             default_strategy_index = 2
