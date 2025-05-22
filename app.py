@@ -16,6 +16,8 @@ from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error, r2_score
 import folium
+from sklearn.impute import SimpleImputer
+from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor, export_text, plot_tree
 from streamlit_folium import folium_static
 import google.generativeai as genai
 import io
@@ -27,6 +29,7 @@ import warnings # Import locally to keep dependencies clear
 from scipy import stats
 from statsmodels.tsa.holtwinters import ExponentialSmoothing
 import nltk # For Sentiment Analysis
+from sklearn.preprocessing import LabelEncoder # For Decision Tree target encoding
 from nltk.sentiment.vader import SentimentIntensityAnalyzer # For Sentiment Analysis
 warnings.filterwarnings('ignore')
 
@@ -1208,8 +1211,173 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
             else:
                 st.info("No numeric columns available for binning.")
 
-        # NEW FEATURE 26: Custom Theme Builder (Was Feature 23)
-        with st.expander("🖌️ Custom Theme Designer"): 
+        # NEW FEATURE 26: Data Imputation Strategies
+        with st.expander("🧹 Data Imputation Strategies"):
+            st.subheader("Handle Missing Values")
+            if not df.empty:
+                cols_with_nan = df.columns[df.isnull().any()].tolist()
+                if not cols_with_nan:
+                    st.info("No columns with missing values found.")
+                else:
+                    st.write("Columns with missing values:")
+                    missing_summary = df[cols_with_nan].isnull().sum().reset_index()
+                    missing_summary.columns = ['Column', 'Missing Count']
+                    st.dataframe(missing_summary[missing_summary['Missing Count'] > 0])
+
+                    impute_cols = st.multiselect("Select column(s) to impute", cols_with_nan, key="impute_cols_select")
+                    
+                    if impute_cols:
+                        # Determine if selected columns are predominantly numeric or categorical for default strategy
+                        is_numeric_selected = all(df[col].dtype in [np.number, 'int64', 'float64'] for col in impute_cols)
+                        is_categorical_selected = all(df[col].dtype == 'object' for col in impute_cols)
+
+                        if is_numeric_selected:
+                            default_strategy_index = 0 # mean
+                            strategies = ['mean', 'median', 'most_frequent', 'constant']
+                        elif is_categorical_selected:
+                            default_strategy_index = 2 # most_frequent
+                            strategies = ['most_frequent', 'constant']
+                        else: # Mixed types or other, default to most_frequent
+                            default_strategy_index = 2
+                            strategies = ['mean', 'median', 'most_frequent', 'constant']
+                            st.warning("Selected columns have mixed types. 'Mean' and 'Median' will only apply to numeric columns if mixed.")
+
+                        impute_strategy = st.selectbox("Imputation Strategy", strategies, index=default_strategy_index, key="impute_strategy_select")
+                        
+                        fill_value_impute = None
+                        if impute_strategy == 'constant':
+                            fill_value_impute = st.text_input("Enter constant value for imputation", key="impute_fill_value")
+
+                        if st.button("Apply Imputation", key="apply_imputation_button"):
+                            df_copy_impute = df.copy() # Work on a copy to show changes before applying to main df
+                            imputed_cols_count = 0
+                            for col in impute_cols:
+                                try:
+                                    current_strategy = impute_strategy
+                                    # Adjust strategy if not applicable (e.g., mean for object type)
+                                    if df_copy_impute[col].dtype == 'object' and current_strategy in ['mean', 'median']:
+                                        st.warning(f"Strategy '{current_strategy}' not applicable for object column '{col}'. Using 'most_frequent'.")
+                                        current_strategy = 'most_frequent'
+                                    
+                                    imputer_params = {'strategy': current_strategy}
+                                    if current_strategy == 'constant':
+                                        if fill_value_impute is None or fill_value_impute == "":
+                                            st.error(f"Please provide a constant value for column '{col}'.")
+                                            continue
+                                        # Try to convert fill_value to column's dtype if possible
+                                        try:
+                                            if pd.api.types.is_numeric_dtype(df_copy_impute[col]):
+                                                imputer_params['fill_value'] = float(fill_value_impute)
+                                            else:
+                                                imputer_params['fill_value'] = str(fill_value_impute)
+                                        except ValueError:
+                                            st.error(f"Could not convert '{fill_value_impute}' to a suitable type for column '{col}'. Using as string.")
+                                            imputer_params['fill_value'] = str(fill_value_impute)
+                                    
+                                    imputer = SimpleImputer(**imputer_params)
+                                    df_copy_impute[col] = imputer.fit_transform(df_copy_impute[[col]])
+                                    imputed_cols_count +=1
+                                except Exception as e:
+                                    st.error(f"Error imputing column '{col}': {e}")
+                            
+                            if imputed_cols_count > 0:
+                                df = df_copy_impute
+                                st.success(f"Imputation applied to {imputed_cols_count} selected column(s). DataFrame updated.")
+                                st.rerun()
+            else:
+                st.info("Upload data to use imputation strategies.")
+
+        # NEW FEATURE 27: Decision Tree Explorer
+        with st.expander("🌳 Decision Tree Explorer"):
+            st.subheader("Train and Analyze Decision Tree Models")
+            if not df.empty:
+                all_cols_dt = df.columns.tolist()
+                target_col_dt = st.selectbox("Select Target Variable (for Decision Tree)", all_cols_dt, key="dt_target_col")
+
+                if target_col_dt:
+                    # Determine task type
+                    if df[target_col_dt].dtype in [np.number, 'int64', 'float64'] and df[target_col_dt].nunique() > 10: # Heuristic for regression
+                        task_type_dt = "Regression"
+                        model_dt = DecisionTreeRegressor(random_state=42)
+                        criterion_options_dt = ["squared_error", "friedman_mse", "absolute_error", "poisson"]
+                    else:
+                        task_type_dt = "Classification"
+                        model_dt = DecisionTreeClassifier(random_state=42)
+                        criterion_options_dt = ["gini", "entropy", "log_loss"]
+                    st.write(f"**Detected Task Type:** {task_type_dt}")
+
+                    feature_cols_dt_options = [col for col in all_cols_dt if col != target_col_dt]
+                    feature_cols_dt = st.multiselect("Select Feature Columns", feature_cols_dt_options, default=feature_cols_dt_options[:min(3, len(feature_cols_dt_options))], key="dt_feature_cols")
+
+                    if feature_cols_dt:
+                        # Preprocessing for DT
+                        df_dt_processed = df[[target_col_dt] + feature_cols_dt].copy().dropna() # Drop NaNs for simplicity here
+                        
+                        # Encode categorical features
+                        categorical_features_dt = df_dt_processed[feature_cols_dt].select_dtypes(include='object').columns.tolist()
+                        if categorical_features_dt:
+                            df_dt_processed = pd.get_dummies(df_dt_processed, columns=categorical_features_dt, drop_first=True)
+                        
+                        X_dt = df_dt_processed.drop(target_col_dt, axis=1)
+                        y_dt = df_dt_processed[target_col_dt]
+
+                        # Encode target if classification and target is object/string
+                        if task_type_dt == "Classification" and y_dt.dtype == 'object':
+                            le = LabelEncoder()
+                            y_dt = le.fit_transform(y_dt)
+                            class_names_dt = le.classes_.astype(str) # For plot_tree
+                        else:
+                            class_names_dt = None
+
+                        if len(X_dt) > 10 and len(X_dt.columns) > 0:
+                            X_train_dt, X_test_dt, y_train_dt, y_test_dt = train_test_split(X_dt, y_dt, test_size=0.3, random_state=42)
+
+                            st.sidebar.subheader("Decision Tree Hyperparameters")
+                            max_depth_dt = st.sidebar.slider("Max Depth", 2, 30, 5, 1, key="dt_max_depth")
+                            min_samples_split_dt = st.sidebar.slider("Min Samples Split", 2, 20, 2, key="dt_min_samples_split")
+                            min_samples_leaf_dt = st.sidebar.slider("Min Samples Leaf", 1, 20, 1, key="dt_min_samples_leaf")
+                            criterion_dt = st.sidebar.selectbox("Criterion", criterion_options_dt, key="dt_criterion")
+
+                            model_dt.set_params(max_depth=max_depth_dt, min_samples_split=min_samples_split_dt, min_samples_leaf=min_samples_leaf_dt, criterion=criterion_dt)
+                            
+                            if st.button("Train & Evaluate Decision Tree", key="train_dt_button"):
+                                model_dt.fit(X_train_dt, y_train_dt)
+                                y_pred_dt = model_dt.predict(X_test_dt)
+
+                                st.subheader("Model Performance")
+                                if task_type_dt == "Regression":
+                                    st.metric("R-squared (R²)", f"{r2_score(y_test_dt, y_pred_dt):.3f}")
+                                    st.metric("Mean Squared Error (MSE)", f"{mean_squared_error(y_test_dt, y_pred_dt):.3f}")
+                                else: # Classification
+                                    st.metric("Accuracy", f"{accuracy_score(y_test_dt, y_pred_dt):.3f}")
+                                    st.text("Classification Report:")
+                                    st.text(classification_report(y_test_dt, y_pred_dt, target_names=class_names_dt, zero_division=0))
+
+                                st.subheader("Feature Importances")
+                                importances_dt = pd.DataFrame({'feature': X_train_dt.columns, 'importance': model_dt.feature_importances_}).sort_values('importance', ascending=False)
+                                st.dataframe(importances_dt)
+                                fig_imp_dt = px.bar(importances_dt, x='importance', y='feature', orientation='h', title="Decision Tree Feature Importances")
+                                st.plotly_chart(fig_imp_dt, use_container_width=True)
+
+                                st.subheader("Decision Tree Structure")
+                                tree_viz_method = st.radio("Tree Visualization", ["Text Representation", "Graphical Plot (Matplotlib)"], key="dt_viz_method")
+                                if tree_viz_method == "Text Representation":
+                                    st.text(export_text(model_dt, feature_names=list(X_train_dt.columns)))
+                                elif tree_viz_method == "Graphical Plot (Matplotlib)":
+                                    if max_depth_dt > 7: # Suggest limiting depth for readability
+                                        st.warning("Plotting a very deep tree might be slow and hard to read. Consider reducing Max Depth for visualization.")
+                                    fig_tree, ax_tree = plt.subplots(figsize=(max(15, max_depth_dt*2), max(10, max_depth_dt*1.5))) # Dynamic figsize
+                                    plot_tree(model_dt, filled=True, feature_names=list(X_train_dt.columns), class_names=class_names_dt, ax=ax_tree, fontsize=8, rounded=True)
+                                    st.pyplot(fig_tree)
+                        else:
+                            st.warning("Not enough data or features after preprocessing for Decision Tree training.")
+                    else:
+                        st.info("Select feature columns to proceed.")
+            else:
+                st.info("Upload data to use the Decision Tree explorer.")
+
+        # NEW FEATURE 28: Custom Theme Builder (Was Feature 26)
+        with st.expander("🖌️ Custom Theme Designer"):
             st.subheader("Create Your Custom Theme")
             
             col1, col2 = st.columns(2)
