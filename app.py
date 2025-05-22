@@ -139,7 +139,7 @@ if gemini_api_key:
         st.sidebar.error(f"API Error: {str(e)}")
 
 # Main title with metrics
-st.title("Advanced Data Explorer & Visualizer")
+st.title("🚀 Advanced Data Explorer & Visualizer")
 st.markdown("### 🔮 Upload your data to unlock insights and visualizations!")
 
 # NEW FEATURE 2: Multiple file upload support
@@ -943,8 +943,67 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
                 else:
                     st.info("Select a date column and a numeric value column for forecasting.")
 
-        # NEW FEATURE 20: Custom Theme Builder (Renumbered)
-        with st.expander("🖌️ Custom Theme Designer"): # Was Feature 15
+        # NEW FEATURE 20: Dedicated PCA Explorer
+        with st.expander("🔬 Principal Component Analysis (PCA) Explorer"):
+            st.subheader("Dimensionality Reduction & Variance Analysis")
+            if len(numeric_cols) >= 2:
+                pca_features = st.multiselect(
+                    "Select Numeric Features for PCA",
+                    numeric_cols,
+                    default=numeric_cols[:min(5, len(numeric_cols))], # Default to first 5 or all if less
+                    key="pca_features_select"
+                )
+
+                if len(pca_features) >= 2:
+                    pca_data = df[pca_features].dropna()
+                    
+                    if not pca_data.empty:
+                        # Standardize data before PCA
+                        scaler_pca = StandardScaler()
+                        scaled_pca_data = scaler_pca.fit_transform(pca_data)
+                        
+                        n_components_pca = min(len(pca_features), len(pca_data)) # Max components is min(n_samples, n_features)
+                        if n_components_pca > 0:
+                            pca_model = PCA(n_components=n_components_pca, random_state=42)
+                            principal_components = pca_model.fit_transform(scaled_pca_data)
+                            
+                            # Explained Variance
+                            explained_variance_ratio = pca_model.explained_variance_ratio_
+                            cumulative_explained_variance = np.cumsum(explained_variance_ratio)
+                            
+                            pc_labels = [f"PC{i+1}" for i in range(n_components_pca)]
+                            
+                            fig_explained_var = go.Figure()
+                            fig_explained_var.add_trace(go.Bar(x=pc_labels, y=explained_variance_ratio, name='Explained Variance per Component', marker_color=custom_color))
+                            fig_explained_var.add_trace(go.Scatter(x=pc_labels, y=cumulative_explained_variance, name='Cumulative Explained Variance', mode='lines+markers'))
+                            fig_explained_var.update_layout(title="Explained Variance by Principal Component", xaxis_title="Principal Component", yaxis_title="Explained Variance Ratio")
+                            st.plotly_chart(fig_explained_var, use_container_width=True)
+
+                            # Component Loadings
+                            st.write("#### Principal Component Loadings")
+                            loadings_df = pd.DataFrame(pca_model.components_.T, columns=pc_labels, index=pca_features)
+                            st.dataframe(loadings_df.style.background_gradient(cmap='viridis', axis=None))
+
+                            # 2D Scatter Plot of PC1 vs PC2
+                            pca_result_df = pd.DataFrame(data=principal_components[:, :2], columns=['PC1', 'PC2'])
+                            color_by_pca = st.selectbox("Color Scatter Plot by (Optional Categorical Column)", [None] + categorical_cols, key="pca_scatter_color")
+                            
+                            if color_by_pca and color_by_pca in df.columns:
+                                pca_result_df[color_by_pca] = df.loc[pca_data.index, color_by_pca].values # Align with original df index
+                            
+                            fig_pca_scatter = px.scatter(pca_result_df, x='PC1', y='PC2', color=color_by_pca if color_by_pca else None, title="Data Projected onto First Two Principal Components")
+                            st.plotly_chart(fig_pca_scatter, use_container_width=True)
+                        else:
+                            st.warning("Not enough features or samples to perform PCA after processing.")
+                    else:
+                        st.warning("No data available for PCA after dropping NaNs from selected features.")
+                else:
+                    st.warning("Please select at least two numeric features for PCA.")
+            else:
+                st.info("PCA requires at least two numeric columns in the dataset.")
+
+        # NEW FEATURE 21: Custom Theme Builder (Renumbered)
+        with st.expander("🖌️ Custom Theme Designer"): # Was Feature 20
             st.subheader("Create Your Custom Theme")
             
             col1, col2 = st.columns(2)
