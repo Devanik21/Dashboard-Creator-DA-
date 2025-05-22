@@ -121,6 +121,35 @@ div[data-testid="stColorPicker"] label, div[data-testid="stNumberInput"] label {
     font-weight: 500;
     color: #CBD5E0; /* Lighter label text for dark theme */
 }
+
+/* CSS for Column Summary Cards */
+.column-summary-card {
+    background: #2D3748; /* Darker background, consistent with insight-box */
+    padding: 15px;
+    border-radius: 8px;
+    color: #E2E8F0; /* Lighter text */
+    margin-bottom: 15px; /* Space between cards */
+    border: 1px solid #4A5568; /* Subtle border */
+    height: 100%; /* Ensure cards in a row have same height if content varies slightly */
+}
+.column-summary-card h4 {
+    font-size: 1.1em;
+    color: #63B3ED; /* Brighter color for column name */
+    margin-bottom: 8px;
+    border-bottom: 1px solid #4A5568;
+    padding-bottom: 5px;
+    white-space: nowrap; /* Prevent long names from wrapping too much */
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.column-summary-card p {
+    font-size: 0.9em;
+    margin-bottom: 4px;
+}
+.column-summary-card p strong {
+    font-weight: 500;
+    color: #A0AEC0; /* Lighter grey for labels */
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -1583,6 +1612,49 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
                 st.warning("You need to upload at least two datasets to use the merge tool.")
             else:
                 st.info("Upload at least two datasets to enable the data merging feature.")
+
+        # NEW FEATURE: Column Summary Cards
+        with st.expander("🧾 Column Summary Cards", expanded=False):
+            st.subheader("Quick Overview of Each Column")
+            if not df.empty:
+                num_cards_per_row = 3 # Adjust as needed for layout
+                all_df_columns = df.columns.tolist()
+                
+                for i in range(0, len(all_df_columns), num_cards_per_row):
+                    row_cols = st.columns(num_cards_per_row)
+                    for j, col_name in enumerate(all_df_columns[i : i + num_cards_per_row]):
+                        if j < len(row_cols): # Ensure we don't try to access an out-of-bounds column
+                            with row_cols[j]:
+                                col_data = df[col_name]
+                                col_type = col_data.dtype
+                                missing_pct = (col_data.isnull().sum() / len(df)) * 100 if len(df) > 0 else 0
+                                unique_count = col_data.nunique()
+                                
+                                card_html = f"""
+                                <div class="column-summary-card">
+                                    <h4>{col_name}</h4>
+                                    <p><strong>Type:</strong> {str(col_type)}</p>
+                                    <p><strong>Missing:</strong> {missing_pct:.1f}%</p>
+                                    <p><strong>Unique Values:</strong> {unique_count}</p>
+                                """
+                                if pd.api.types.is_numeric_dtype(col_data) and not col_data.dropna().empty:
+                                    card_html += f"""
+                                    <p><strong>Min:</strong> {col_data.min():.2f}</p>
+                                    <p><strong>Max:</strong> {col_data.max():.2f}</p>
+                                    <p><strong>Mean:</strong> {col_data.mean():.2f}</p>
+                                    """
+                                elif pd.api.types.is_datetime64_any_dtype(col_data) and not col_data.dropna().empty:
+                                    try:
+                                        card_html += f"""
+                                        <p><strong>Min Date:</strong> {col_data.min().strftime('%Y-%m-%d')}</p>
+                                        <p><strong>Max Date:</strong> {col_data.max().strftime('%Y-%m-%d')}</p>
+                                        """
+                                    except AttributeError: # Handle NaT if min/max results in NaT
+                                        card_html += "<p><strong>Min Date:</strong> N/A</p><p><strong>Max Date:</strong> N/A</p>"
+                                card_html += "</div>"
+                                st.markdown(card_html, unsafe_allow_html=True)
+            else:
+                st.info("No data available to display column summaries.")
 
         # NEW FEATURE 29: Custom Theme Builder
         with st.expander("🖌️ Custom Theme Designer"):
