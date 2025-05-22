@@ -174,7 +174,7 @@ if gemini_api_key:
         st.sidebar.error(f"API Error: {str(e)}")
 
 # Main title with metrics
-st.title("🚀 Advanced Data Explorer & Visualizer")
+st.title("Advanced Data Explorer & Visualizer")
 st.markdown("### 🔮 Upload your data to unlock insights and visualizations!")
 
 # NEW FEATURE 2: Multiple file upload support
