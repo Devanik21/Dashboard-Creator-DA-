@@ -169,6 +169,24 @@ if uploaded_files:
         selected_dataset = st.selectbox("Select Primary Dataset", options=list(datasets.keys()))
         df = datasets[selected_dataset]
         
+        # NEW FEATURE: Automatic Data Overview Table (before Advanced Profiling)
+        with st.expander("📄 Quick Data Overview", expanded=True):
+            st.subheader(f"Overview of: {selected_dataset}")
+            
+            st.markdown("#### First 5 Rows:")
+            st.dataframe(df.head())
+            
+            col_info1, col_info2 = st.columns(2)
+            with col_info1:
+                st.markdown("#### Data Dimensions:")
+                st.write(f"Rows: {df.shape[0]:,}")
+                st.write(f"Columns: {df.shape[1]}")
+            with col_info2:
+                st.markdown("#### Missing Values (per column):")
+                st.dataframe(df.isnull().sum().rename("Missing Count").to_frame().T)
+            st.markdown("#### Column Data Types:")
+            st.dataframe(df.dtypes.rename("Data Type").to_frame().T)
+            
         # NEW FEATURE 4: Advanced data profiling
         with st.expander("📊 Advanced Data Profiling", expanded=True):
             col1, col2, col3, col4 = st.columns(4)
