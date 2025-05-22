@@ -22,8 +22,8 @@ import io
 import base64
 import re
 from datetime import datetime, timedelta
-import warnings
 import time # Import the time module
+import warnings
 warnings.filterwarnings('ignore')
 
 # Page configuration
@@ -415,6 +415,195 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
                     bins = st.slider("Bins", 10, 100, 30)
                     fig = px.histogram(df, x=col, nbins=bins, title=f"Distribution of {col}")
                     st.plotly_chart(fig, use_container_width=True)
+
+        # NEW FEATURE 11: Anomaly Detection Dashboard
+        with st.expander("🎯 Anomaly Detection Dashboard"):
+            if numeric_cols:
+                st.subheader("Interactive Outlier Detection")
+                anomaly_col = st.selectbox("Select Column for Anomaly Detection", numeric_cols)
+                method = st.selectbox("Detection Method", ["IQR", "Z-Score", "Isolation Forest"])
+                
+                if method == "IQR":
+                    Q1, Q3 = df[anomaly_col].quantile([0.25, 0.75])
+                    IQR = Q3 - Q1
+                    lower_bound = Q1 - 1.5 * IQR
+                    upper_bound = Q3 + 1.5 * IQR
+                    anomalies = (df[anomaly_col] < lower_bound) | (df[anomaly_col] > upper_bound)
+                elif method == "Z-Score":
+                    z_scores = np.abs((df[anomaly_col] - df[anomaly_col].mean()) / df[anomaly_col].std())
+                    anomalies = z_scores > 3
+                else:  # Isolation Forest
+                    iso_forest = IsolationForest(contamination=0.1, random_state=42)
+                    anomalies = iso_forest.fit_predict(df[[anomaly_col]].dropna()) == -1
+                
+                anomaly_count = anomalies.sum() if hasattr(anomalies, 'sum') else len([x for x in anomalies if x])
+                st.metric("Anomalies Found", anomaly_count)
+                
+                # Visualization
+                fig = go.Figure()
+                fig.add_trace(go.Scatter(y=df[anomaly_col], mode='markers', name='Normal', 
+                                       marker=dict(color='blue', size=4)))
+                if anomaly_count > 0:
+                    anomaly_data = df[anomalies] if hasattr(anomalies, 'sum') else df.iloc[np.where(anomalies)[0]]
+                    fig.add_trace(go.Scatter(y=anomaly_data[anomaly_col], mode='markers', name='Anomalies',
+                                           marker=dict(color='red', size=8)))
+                fig.update_layout(title=f"Anomaly Detection: {anomaly_col}")
+                st.plotly_chart(fig, use_container_width=True)
+
+        # NEW FEATURE 12: Time Series Analysis
+        date_cols = df.select_dtypes(include=['datetime']).columns.tolist()
+        for col in df.columns:
+            if 'date' in col.lower() or 'time' in col.lower():
+                try:
+                    df[col] = pd.to_datetime(df[col])
+                    date_cols.append(col)
+                except: pass
+        
+        if date_cols and numeric_cols:
+            with st.expander("📊 Time Series Analysis"):
+                st.subheader("Trend Analysis & Forecasting")
+                date_col = st.selectbox("Date Column", date_cols)
+                value_col = st.selectbox("Value Column", numeric_cols)
+                
+                # Prepare time series data
+                ts_data = df[[date_col, value_col]].dropna().sort_values(date_col)
+                ts_data = ts_data.set_index(date_col).resample('D')[value_col].mean().dropna()
+                
+                if len(ts_data) > 10:
+                    # Basic trend analysis
+                    fig = go.Figure()
+                    fig.add_trace(go.Scatter(x=ts_data.index, y=ts_data.values, mode='lines+markers', name='Actual'))
+                    
+                    # Simple moving average
+                    window = min(7, len(ts_data)//3)
+                    ma = ts_data.rolling(window=window).mean()
+                    fig.add_trace(go.Scatter(x=ma.index, y=ma.values, mode='lines', name=f'{window}-day MA'))
+                    
+                    fig.update_layout(title=f"Time Series: {value_col}")
+                    st.plotly_chart(fig, use_container_width=True)
+                    
+                    # Statistics
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.metric("Trend", "Upward" if ts_data.iloc[-1] > ts_data.iloc[0] else "Downward")
+                    with col2:
+                        volatility = ts_data.std() / ts_data.mean() * 100
+                        st.metric("Volatility", f"{volatility:.1f}%")
+
+        # NEW FEATURE 13: Data Relationship Mapper
+        with st.expander("🔗 Data Relationship Mapper"):
+            st.subheader("Column Relationship Network")
+            if len(numeric_cols) >= 3:
+                # Create correlation network
+                corr_matrix = df[numeric_cols].corr().abs()
+                
+                # Find strong relationships (>0.5 correlation)
+                relationships = []
+                for i in range(len(numeric_cols)):
+                    for j in range(i+1, len(numeric_cols)):
+                        corr_val = corr_matrix.iloc[i, j]
+                        if corr_val > 0.5:
+                            relationships.append((numeric_cols[i], numeric_cols[j], corr_val))
+                
+                if relationships:
+                    st.write("**Strong Relationships Found:**")
+                    for col1, col2, strength in sorted(relationships, key=lambda x: x[2], reverse=True)[:5]:
+                        st.write(f"• {col1} ↔ {col2}: {strength:.3f}")
+                    
+                    # Create network visualization (simplified)
+                    nodes = list(set([r[0] for r in relationships] + [r[1] for r in relationships]))
+                    fig = go.Figure()
+                    
+                    # Add nodes
+                    for i, node in enumerate(nodes):
+                        fig.add_trace(go.Scatter(x=[i], y=[0], mode='markers+text', text=[node],
+                                               textposition="middle center", marker=dict(size=20)))
+                    
+                    fig.update_layout(title="Data Relationship Network", showlegend=False)
+                    st.plotly_chart(fig, use_container_width=True)
+                else:
+                    st.info("No strong relationships found (correlation > 0.5)")
+
+        # NEW FEATURE 14: A/B Testing Suite
+        if len(categorical_cols) >= 1 and len(numeric_cols) >= 1:
+            with st.expander("📈 A/B Testing Suite"):
+                st.subheader("Statistical Significance Testing")
+                
+                group_col = st.selectbox("Group Column (A/B)", categorical_cols)
+                metric_col = st.selectbox("Metric Column", numeric_cols)
+                
+                groups = df[group_col].unique()
+                if len(groups) == 2:
+                    group_a = df[df[group_col] == groups[0]][metric_col].dropna()
+                    group_b = df[df[group_col] == groups[1]][metric_col].dropna()
+                    
+                    if len(group_a) > 5 and len(group_b) > 5:
+                        # Basic stats
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            st.metric(f"{groups[0]} Mean", f"{group_a.mean():.2f}")
+                            st.metric(f"{groups[0]} Size", len(group_a))
+                        with col2:
+                            st.metric(f"{groups[1]} Mean", f"{group_b.mean():.2f}")
+                            st.metric(f"{groups[1]} Size", len(group_b))
+                        
+                        # Effect size
+                        effect_size = abs(group_a.mean() - group_b.mean()) / np.sqrt((group_a.var() + group_b.var()) / 2)
+                        st.metric("Effect Size (Cohen's d)", f"{effect_size:.3f}")
+                        
+                        # Distribution comparison
+                        fig = go.Figure()
+                        fig.add_trace(go.Histogram(x=group_a, name=str(groups[0]), opacity=0.7))
+                        fig.add_trace(go.Histogram(x=group_b, name=str(groups[1]), opacity=0.7))
+                        fig.update_layout(title="Distribution Comparison", barmode='overlay')
+                        st.plotly_chart(fig, use_container_width=True)
+
+        # NEW FEATURE 15: Custom Theme Builder
+        with st.expander("🎨 Custom Theme Builder"):
+            st.subheader("Create Your Custom Theme")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                primary_color = st.color_picker("Primary Color", "#667eea")
+                secondary_color = st.color_picker("Secondary Color", "#764ba2") 
+                text_color = st.color_picker("Text Color", "#262730")
+            with col2:
+                bg_color = st.color_picker("Background Color", "#ffffff")
+                accent_color = st.color_picker("Accent Color", "#f39c12")
+                
+            theme_name = st.text_input("Theme Name", "My Custom Theme")
+            
+            if st.button("Apply Custom Theme"):
+                custom_css = f"""
+                <style>
+                .stApp {{
+                    background-color: {bg_color};
+                    color: {text_color};
+                }}
+                .metric-card {{
+                    background: linear-gradient(45deg, {primary_color} 0%, {secondary_color} 100%);
+                }}
+                .stButton > button {{
+                    background-color: {accent_color};
+                    color: white;
+                }}
+                </style>
+                """
+                st.markdown(custom_css, unsafe_allow_html=True)
+                st.success(f"Applied theme: {theme_name}")
+                
+                # Save theme
+                theme_config = {
+                    "name": theme_name,
+                    "primary": primary_color,
+                    "secondary": secondary_color,
+                    "text": text_color,
+                    "background": bg_color,
+                    "accent": accent_color
+                }
+                st.download_button("Download Theme", 
+                                 json.dumps(theme_config, indent=2),
+                                 f"{theme_name.lower().replace(' ', '_')}_theme.json")
 
         # Auto-refresh functionality
         if refresh_interval > 0:
