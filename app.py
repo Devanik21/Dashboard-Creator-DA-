@@ -1300,7 +1300,118 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
             else:
                 st.info("Upload data to use the Decision Tree explorer.")
 
-        # NEW FEATURE 27: Custom Theme Builder
+        # NEW FEATURE 27: Data Grouping & Aggregation
+        with st.expander("🧱 Data Grouping & Aggregation"):
+            st.subheader("Group Data and Calculate Aggregate Statistics")
+            if categorical_cols and numeric_cols:
+                group_by_cols = st.multiselect(
+                    "Select Column(s) to Group By",
+                    categorical_cols + date_cols, # Allow grouping by date cols too
+                    key="group_by_cols_select"
+                )
+
+                if group_by_cols:
+                    agg_col_select = st.selectbox(
+                        "Select Numeric Column for Aggregation",
+                        numeric_cols,
+                        key="agg_col_select_group"
+                    )
+                    
+                    agg_functions_options = {
+                        "Mean": "mean", "Sum": "sum", "Count": "count", 
+                        "Median": "median", "Min": "min", "Max": "max", 
+                        "Standard Deviation": "std", "Variance": "var",
+                        "Unique Count": "nunique"
+                    }
+                    selected_agg_funcs_names = st.multiselect(
+                        "Select Aggregation Function(s)",
+                        list(agg_functions_options.keys()),
+                        default=["Mean", "Count"],
+                        key="agg_funcs_select"
+                    )
+
+                    if agg_col_select and selected_agg_funcs_names:
+                        actual_agg_funcs = [agg_functions_options[name] for name in selected_agg_funcs_names]
+                        
+                        if st.button("Perform Grouping & Aggregation", key="perform_group_agg_button"):
+                            try:
+                                # Create a dictionary for multiple aggregations on the same column
+                                agg_dict = {agg_col_select: actual_agg_funcs}
+                                
+                                grouped_df = df.groupby(group_by_cols).agg(agg_dict)
+                                
+                                # Flatten MultiIndex columns if necessary (e.g., ('Sales', 'mean') -> 'Sales_mean')
+                                if isinstance(grouped_df.columns, pd.MultiIndex):
+                                    grouped_df.columns = ['_'.join(col).strip() for col in grouped_df.columns.values]
+                                
+                                grouped_df = grouped_df.reset_index() # Bring group_by_cols back as columns
+
+                                st.write("#### Aggregated Results:")
+                                st.dataframe(grouped_df)
+
+                                # Offer a simple bar chart for the first aggregation result if applicable
+                                if len(group_by_cols) == 1 and len(actual_agg_funcs) > 0:
+                                    first_agg_col_name = grouped_df.columns[-len(actual_agg_funcs)] # Get the first aggregated column
+                                    if pd.api.types.is_numeric_dtype(grouped_df[first_agg_col_name]):
+                                        st.write(f"#### Quick Plot: {first_agg_col_name} by {group_by_cols[0]}")
+                                        fig_agg = px.bar(grouped_df.sort_values(first_agg_col_name, ascending=False).head(20), 
+                                                         x=group_by_cols[0], y=first_agg_col_name,
+                                                         title=f"{first_agg_col_name} by {group_by_cols[0]} (Top 20)",
+                                                         color_discrete_sequence=[custom_color])
+                                        st.plotly_chart(fig_agg, use_container_width=True)
+
+                            except Exception as e:
+                                st.error(f"Error during grouping and aggregation: {e}")
+                else:
+                    st.info("Select at least one column to group by.")
+            elif not categorical_cols:
+                st.info("Grouping requires at least one categorical or date column.")
+            elif not numeric_cols:
+                st.info("Aggregation requires at least one numeric column.")
+
+        # NEW FEATURE 28: Cross-Tabulation / Contingency Table Creator
+        with st.expander("📊 Cross-Tabulation (Contingency Tables)"):
+            st.subheader("Explore Relationships Between Categorical Variables")
+            if len(categorical_cols) >= 2:
+                row_var_ct = st.selectbox("Select Row Variable", categorical_cols, key="ct_row_var")
+                col_var_ct = st.selectbox("Select Column Variable", [c for c in categorical_cols if c != row_var_ct], key="ct_col_var")
+
+                if row_var_ct and col_var_ct:
+                    normalize_ct = st.selectbox(
+                        "Normalize by (Show Percentages)",
+                        [False, 'index', 'columns', 'all'],
+                        format_func=lambda x: {False: "Absolute Counts", 'index': "Row %", 'columns': "Column %", 'all': "Total %"}.get(x, x),
+                        key="ct_normalize"
+                    )
+
+                    try:
+                        contingency_table = pd.crosstab(df[row_var_ct], df[col_var_ct], normalize=normalize_ct)
+                        st.write(f"#### Contingency Table: {row_var_ct} vs {col_var_ct}")
+                        st.dataframe(contingency_table.style.format("{:.2%}" if normalize_ct else "{:,}"))
+
+                        # Visualization
+                        if not normalize_ct: # Plot counts if not normalized, otherwise normalized plot might be confusing with stacked bar
+                            ct_plot_df = pd.crosstab(df[row_var_ct], df[col_var_ct])
+                            fig_ct = px.bar(ct_plot_df, barmode='group', title=f"Grouped Bar Chart: {row_var_ct} vs {col_var_ct}", color_discrete_sequence=[custom_color])
+                            st.plotly_chart(fig_ct, use_container_width=True)
+                        
+                        # Chi-squared test
+                        if st.checkbox("Perform Chi-squared Test for Independence", key="ct_chi2_test"):
+                            chi2, p, dof, expected = stats.chi2_contingency(pd.crosstab(df[row_var_ct], df[col_var_ct]))
+                            st.write("##### Chi-squared Test Results:")
+                            st.write(f"- Chi-squared Statistic: {chi2:.3f}")
+                            st.write(f"- P-value: {p:.4f}")
+                            st.write(f"- Degrees of Freedom: {dof}")
+                            if p < 0.05:
+                                st.success("Result: Significant association between variables (p < 0.05).")
+                            else:
+                                st.warning("Result: No significant association found (p >= 0.05).")
+                    except Exception as e:
+                        st.error(f"Error creating cross-tabulation: {e}")
+            else:
+                st.info("Cross-tabulation requires at least two categorical columns.")
+
+        # NEW FEATURE 29: Custom Theme Builder
         with st.expander("🖌️ Custom Theme Designer"):
             st.subheader("Create Your Custom Theme")
             
