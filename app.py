@@ -38,7 +38,7 @@ warnings.filterwarnings('ignore')
 st.set_page_config(layout="wide", page_title="Advanced Dashboard Creator", page_icon="📊")
 
 with st.sidebar:
-    st.image("d2.jpg", caption="The Future of Data Analysis.", use_container_width=True)
+    st.image("d2.jpg", caption="From rows to revelations.", use_container_width=True)
 
 
 # Custom CSS for better styling
@@ -179,7 +179,7 @@ if gemini_api_key:
 
 # Main title with metrics
 st.title("Advanced Data Explorer & Visualizer")
-st.image("d3.jpg", caption="Data Analysis meets AI meets Elegance.", use_container_width=True)
+st.image("d3.jpg", caption="Made for Analysts. Loved by Scientists.", use_container_width=True)
 st.markdown("### 🔮 Upload your data to unlock insights and visualizations!")
 
 # NEW FEATURE 2: Multiple file upload support
@@ -1754,4 +1754,4 @@ with st.sidebar:
     st.image("d1.jpg", use_container_width=True)
 
 
-st.image("d4.jpg", caption="Made for Analysts. Loved by Scientists. Powered by Gemini.", use_container_width=True)
+st.image("d4.jpg", caption="Data Analysis meets AI meets Elegance.", use_container_width=True)
