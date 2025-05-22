@@ -1751,7 +1751,7 @@ else:
 
 
 with st.sidebar:
-    st.image("d1.jpg",captions="Decode with design", use_container_width=True)
+    st.image("d1.jpg",caption="Decode with design", use_container_width=True)
 
 
 st.image("d4.jpg", caption="Data Analysis meets AI meets Elegance.", use_container_width=True)
