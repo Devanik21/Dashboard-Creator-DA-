@@ -205,6 +205,25 @@ if uploaded_files:
     if datasets:
         # Dataset selector
         selected_dataset = st.selectbox("Select Primary Dataset", options=list(datasets.keys()))
+
+        # Define the callback function for resetting model parameters
+        # This function will be called when the reset button is clicked.
+        def reset_all_model_parameters_callback():
+            # Reset DT parameters to their initial defaults
+            # Fallback values in .get() are for extreme safety, 
+            # assuming INIT_DEFAULT keys are always set before button click.
+            st.session_state.dt_max_depth = st.session_state.get("INIT_DEFAULT_dt_max_depth", 5)
+            st.session_state.dt_min_samples_split = st.session_state.get("INIT_DEFAULT_dt_min_samples_split", 2)
+            st.session_state.dt_min_samples_leaf = st.session_state.get("INIT_DEFAULT_dt_min_samples_leaf", 1)
+            st.session_state.dt_criterion = st.session_state.get("INIT_DEFAULT_dt_criterion", "gini")
+            
+            # Reset RF parameters to their initial defaults
+            st.session_state.rf_n_estimators = st.session_state.get("INIT_DEFAULT_rf_n_estimators", 100)
+            st.session_state.rf_max_depth = st.session_state.get("INIT_DEFAULT_rf_max_depth", 10)
+            st.session_state.rf_min_samples_split = st.session_state.get("INIT_DEFAULT_rf_min_samples_split", 2)
+            st.session_state.rf_min_samples_leaf = st.session_state.get("INIT_DEFAULT_rf_min_samples_leaf", 1)
+            st.session_state.rf_criterion = st.session_state.get("INIT_DEFAULT_rf_criterion", "gini")
+
         df = datasets[selected_dataset]
         
         # NEW FEATURE: Automatic Data Overview Table (before Advanced Profiling)
@@ -1467,20 +1486,9 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
                             criterion_rf = st.sidebar.selectbox("Criterion (RF)", criterion_options_rf, index=initial_rf_criterion_index, key="rf_criterion")
 
                             # Unified Reset button for ALL model parameters (DT and RF)
-                            if st.sidebar.button("Reset All Model Parameters", key="reset_all_model_params_button"):
-                                # Reset DT parameters to their initial defaults
-                                st.session_state.dt_max_depth = st.session_state.get("INIT_DEFAULT_dt_max_depth", 5)
-                                st.session_state.dt_min_samples_split = st.session_state.get("INIT_DEFAULT_dt_min_samples_split", 2)
-                                st.session_state.dt_min_samples_leaf = st.session_state.get("INIT_DEFAULT_dt_min_samples_leaf", 1)
-                                st.session_state.dt_criterion = st.session_state.get("INIT_DEFAULT_dt_criterion", "gini")
-                                
-                                # Reset RF parameters to their initial defaults
-                                st.session_state.rf_n_estimators = st.session_state.get("INIT_DEFAULT_rf_n_estimators", 100)
-                                st.session_state.rf_max_depth = st.session_state.get("INIT_DEFAULT_rf_max_depth", 10)
-                                st.session_state.rf_min_samples_split = st.session_state.get("INIT_DEFAULT_rf_min_samples_split", 2)
-                                st.session_state.rf_min_samples_leaf = st.session_state.get("INIT_DEFAULT_rf_min_samples_leaf", 1)
-                                st.session_state.rf_criterion = st.session_state.get("INIT_DEFAULT_rf_criterion", "gini")
-                                st.rerun()
+                            st.sidebar.button("Reset All Model Parameters", 
+                                              key="reset_all_model_params_button",
+                                              on_click=reset_all_model_parameters_callback) # Use the callback
 
                             model_rf_instance.set_params(
                                 n_estimators=n_estimators_rf,
