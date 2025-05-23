@@ -1311,14 +1311,39 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
                             X_train_dt, X_test_dt, y_train_dt, y_test_dt = train_test_split(X_dt, y_dt, test_size=0.3, random_state=42)
 
                             st.sidebar.subheader("Decision Tree Hyperparameters")
-                            max_depth_dt = st.sidebar.slider("Max Depth", 2, 30, 5, 1, key="dt_max_depth")
-                            min_samples_split_dt = st.sidebar.slider("Min Samples Split", 2, 20, 2, key="dt_min_samples_split")
-                            min_samples_leaf_dt = st.sidebar.slider("Min Samples Leaf", 1, 20, 1, key="dt_min_samples_leaf")
-                            criterion_dt = st.sidebar.selectbox("Criterion", criterion_options_dt, key="dt_criterion")
+                            
+                            # Define and store initial default values for DT
+                            # These are used for widget initialization and for the "Reset All" button
+                            st.session_state.INIT_DEFAULT_dt_max_depth = 5
+                            st.session_state.INIT_DEFAULT_dt_min_samples_split = 2
+                            st.session_state.INIT_DEFAULT_dt_min_samples_leaf = 1
+                            
+                            default_dt_criterion_val = "squared_error" if task_type_dt == "Regression" else "gini"
+                            if default_dt_criterion_val not in criterion_options_dt:
+                                default_dt_criterion_val = criterion_options_dt[0] if criterion_options_dt else "gini"
+                            st.session_state.INIT_DEFAULT_dt_criterion = default_dt_criterion_val
+
+                            max_depth_dt = st.sidebar.slider("Max Depth (DT)", 2, 30, st.session_state.INIT_DEFAULT_dt_max_depth, 1, key="dt_max_depth")
+                            min_samples_split_dt = st.sidebar.slider("Min Samples Split (DT)", 2, 20, st.session_state.INIT_DEFAULT_dt_min_samples_split, key="dt_min_samples_split")
+                            min_samples_leaf_dt = st.sidebar.slider("Min Samples Leaf (DT)", 1, 20, st.session_state.INIT_DEFAULT_dt_min_samples_leaf, key="dt_min_samples_leaf")
+
+                            try:
+                                current_dt_criterion_val_for_select = st.session_state.get("dt_criterion", st.session_state.INIT_DEFAULT_dt_criterion)
+                                if current_dt_criterion_val_for_select not in criterion_options_dt:
+                                    current_dt_criterion_val_for_select = st.session_state.INIT_DEFAULT_dt_criterion
+                                initial_dt_criterion_index = criterion_options_dt.index(current_dt_criterion_val_for_select)
+                            except ValueError:
+                                initial_dt_criterion_index = 0
+                            except Exception: # Catch if criterion_options_dt is empty
+                                initial_dt_criterion_index = 0
+
+                            criterion_dt = st.sidebar.selectbox("Criterion (DT)", criterion_options_dt, index=initial_dt_criterion_index, key="dt_criterion")
 
                             model_dt.set_params(max_depth=max_depth_dt, min_samples_split=min_samples_split_dt, min_samples_leaf=min_samples_leaf_dt, criterion=criterion_dt)
                             
                             if st.button("Train & Evaluate Decision Tree", key="train_dt_button"):
+                                # Ensure model instance is fresh if hyperparameters changed via sidebar
+                                model_dt.set_params(max_depth=max_depth_dt, min_samples_split=min_samples_split_dt, min_samples_leaf=min_samples_leaf_dt, criterion=criterion_dt)
                                 model_dt.fit(X_train_dt, y_train_dt)
                                 y_pred_dt = model_dt.predict(X_test_dt)
 
@@ -1400,49 +1425,61 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
                             X_train_rf, X_test_rf, y_train_rf, y_test_rf = train_test_split(X_rf, y_rf, test_size=0.3, random_state=42)
 
                             st.sidebar.subheader("Random Forest Hyperparameters")
-
-                            # Define default values for reset and initial widget state
-                            default_rf_n_estimators = 100
-                            default_rf_max_depth = 10
-                            default_rf_min_samples_split = 2
-                            default_rf_min_samples_leaf = 1
+                            
+                            # Define and store initial default values for RF
+                            # These are used for widget initialization and for the "Reset All" button
+                            st.session_state.INIT_DEFAULT_rf_n_estimators = 100
+                            st.session_state.INIT_DEFAULT_rf_max_depth = 10
+                            st.session_state.INIT_DEFAULT_rf_min_samples_split = 2
+                            st.session_state.INIT_DEFAULT_rf_min_samples_leaf = 1
+                            
                             if task_type_rf == "Regression":
-                                default_rf_criterion = "squared_error"
+                                task_specific_default_rf_criterion = "squared_error"
                             else: # Classification
-                                default_rf_criterion = "gini"
+                                task_specific_default_rf_criterion = "gini"
                             
                             # Ensure default_rf_criterion is valid within the current options
-                            if default_rf_criterion not in criterion_options_rf:
-                                default_rf_criterion = criterion_options_rf[0] if criterion_options_rf else "gini" # Fallback
+                            if task_specific_default_rf_criterion not in criterion_options_rf:
+                                task_specific_default_rf_criterion = criterion_options_rf[0] if criterion_options_rf else "gini" # Fallback
+                            st.session_state.INIT_DEFAULT_rf_criterion = task_specific_default_rf_criterion
 
                             # Widgets - their keys link them to st.session_state
                             # The third argument (default value) is used if the key is not in st.session_state yet.
-                            n_estimators_rf = st.sidebar.slider("Number of Estimators (Trees)", 10, 500, default_rf_n_estimators, 10, key="rf_n_estimators")
-                            max_depth_rf = st.sidebar.slider("Max Depth (RF)", 2, 30, default_rf_max_depth, 1, key="rf_max_depth")
-                            min_samples_split_rf = st.sidebar.slider("Min Samples Split (RF)", 2, 20, default_rf_min_samples_split, key="rf_min_samples_split")
-                            min_samples_leaf_rf = st.sidebar.slider("Min Samples Leaf (RF)", 1, 20, default_rf_min_samples_leaf, key="rf_min_samples_leaf")
+                            n_estimators_rf = st.sidebar.slider("Number of Estimators (Trees)", 10, 500, st.session_state.INIT_DEFAULT_rf_n_estimators, 10, key="rf_n_estimators")
+                            max_depth_rf = st.sidebar.slider("Max Depth (RF)", 2, 30, st.session_state.INIT_DEFAULT_rf_max_depth, 1, key="rf_max_depth")
+                            min_samples_split_rf = st.sidebar.slider("Min Samples Split (RF)", 2, 20, st.session_state.INIT_DEFAULT_rf_min_samples_split, key="rf_min_samples_split")
+                            min_samples_leaf_rf = st.sidebar.slider("Min Samples Leaf (RF)", 1, 20, st.session_state.INIT_DEFAULT_rf_min_samples_leaf, key="rf_min_samples_leaf")
                             
                             # Determine initial index for selectbox
                             # Uses value from session state if available, otherwise uses the calculated default_rf_criterion
                             try:
-                                current_criterion_val = st.session_state.get("rf_criterion", default_rf_criterion)
+                                current_rf_criterion_val_for_select = st.session_state.get("rf_criterion", st.session_state.INIT_DEFAULT_rf_criterion)
                                 # If the value from session state is no longer valid in current options, revert to default
-                                if current_criterion_val not in criterion_options_rf:
-                                    current_criterion_val = default_rf_criterion
-                                initial_criterion_index = criterion_options_rf.index(current_criterion_val)
+                                if current_rf_criterion_val_for_select not in criterion_options_rf:
+                                    current_rf_criterion_val_for_select = st.session_state.INIT_DEFAULT_rf_criterion
+                                initial_rf_criterion_index = criterion_options_rf.index(current_rf_criterion_val_for_select)
                             except ValueError: 
                                 # Fallback if default_rf_criterion itself is somehow not in options (e.g. options changed unexpectedly)
                                 initial_criterion_index = 0 
+                            except Exception: # Catch if criterion_options_rf is empty
+                                initial_rf_criterion_index = 0
 
-                            criterion_rf = st.sidebar.selectbox("Criterion (RF)", criterion_options_rf, index=initial_criterion_index, key="rf_criterion")
+                            criterion_rf = st.sidebar.selectbox("Criterion (RF)", criterion_options_rf, index=initial_rf_criterion_index, key="rf_criterion")
 
-                            # Reset button for RF parameters
-                            if st.sidebar.button("Reset RF Parameters", key="rf_reset_params_button"):
-                                st.session_state.rf_n_estimators = default_rf_n_estimators
-                                st.session_state.rf_max_depth = default_rf_max_depth
-                                st.session_state.rf_min_samples_split = default_rf_min_samples_split
-                                st.session_state.rf_min_samples_leaf = default_rf_min_samples_leaf
-                                st.session_state.rf_criterion = default_rf_criterion
+                            # Unified Reset button for ALL model parameters (DT and RF)
+                            if st.sidebar.button("Reset All Model Parameters", key="reset_all_model_params_button"):
+                                # Reset DT parameters to their initial defaults
+                                st.session_state.dt_max_depth = st.session_state.get("INIT_DEFAULT_dt_max_depth", 5)
+                                st.session_state.dt_min_samples_split = st.session_state.get("INIT_DEFAULT_dt_min_samples_split", 2)
+                                st.session_state.dt_min_samples_leaf = st.session_state.get("INIT_DEFAULT_dt_min_samples_leaf", 1)
+                                st.session_state.dt_criterion = st.session_state.get("INIT_DEFAULT_dt_criterion", "gini")
+                                
+                                # Reset RF parameters to their initial defaults
+                                st.session_state.rf_n_estimators = st.session_state.get("INIT_DEFAULT_rf_n_estimators", 100)
+                                st.session_state.rf_max_depth = st.session_state.get("INIT_DEFAULT_rf_max_depth", 10)
+                                st.session_state.rf_min_samples_split = st.session_state.get("INIT_DEFAULT_rf_min_samples_split", 2)
+                                st.session_state.rf_min_samples_leaf = st.session_state.get("INIT_DEFAULT_rf_min_samples_leaf", 1)
+                                st.session_state.rf_criterion = st.session_state.get("INIT_DEFAULT_rf_criterion", "gini")
                                 st.rerun()
 
                             model_rf_instance.set_params(
@@ -1454,6 +1491,8 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
                             )
                             
                             if st.button("Train & Evaluate Random Forest", key="train_rf_button"):
+                                # Ensure model instance is fresh if hyperparameters changed via sidebar
+                                model_rf_instance.set_params(n_estimators=n_estimators_rf, max_depth=max_depth_rf, min_samples_split=min_samples_split_rf, min_samples_leaf=min_samples_leaf_rf, criterion=criterion_rf)
                                 model_rf_instance.fit(X_train_rf, y_train_rf)
                                 y_pred_rf = model_rf_instance.predict(X_test_rf)
 
