@@ -1400,11 +1400,50 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
                             X_train_rf, X_test_rf, y_train_rf, y_test_rf = train_test_split(X_rf, y_rf, test_size=0.3, random_state=42)
 
                             st.sidebar.subheader("Random Forest Hyperparameters")
-                            n_estimators_rf = st.sidebar.slider("Number of Estimators (Trees)", 10, 500, 100, 10, key="rf_n_estimators")
-                            max_depth_rf = st.sidebar.slider("Max Depth (RF)", 2, 30, 10, 1, key="rf_max_depth")
-                            min_samples_split_rf = st.sidebar.slider("Min Samples Split (RF)", 2, 20, 2, key="rf_min_samples_split")
-                            min_samples_leaf_rf = st.sidebar.slider("Min Samples Leaf (RF)", 1, 20, 1, key="rf_min_samples_leaf")
-                            criterion_rf = st.sidebar.selectbox("Criterion (RF)", criterion_options_rf, key="rf_criterion")
+
+                            # Define default values for reset and initial widget state
+                            default_rf_n_estimators = 100
+                            default_rf_max_depth = 10
+                            default_rf_min_samples_split = 2
+                            default_rf_min_samples_leaf = 1
+                            if task_type_rf == "Regression":
+                                default_rf_criterion = "squared_error"
+                            else: # Classification
+                                default_rf_criterion = "gini"
+                            
+                            # Ensure default_rf_criterion is valid within the current options
+                            if default_rf_criterion not in criterion_options_rf:
+                                default_rf_criterion = criterion_options_rf[0] if criterion_options_rf else "gini" # Fallback
+
+                            # Widgets - their keys link them to st.session_state
+                            # The third argument (default value) is used if the key is not in st.session_state yet.
+                            n_estimators_rf = st.sidebar.slider("Number of Estimators (Trees)", 10, 500, default_rf_n_estimators, 10, key="rf_n_estimators")
+                            max_depth_rf = st.sidebar.slider("Max Depth (RF)", 2, 30, default_rf_max_depth, 1, key="rf_max_depth")
+                            min_samples_split_rf = st.sidebar.slider("Min Samples Split (RF)", 2, 20, default_rf_min_samples_split, key="rf_min_samples_split")
+                            min_samples_leaf_rf = st.sidebar.slider("Min Samples Leaf (RF)", 1, 20, default_rf_min_samples_leaf, key="rf_min_samples_leaf")
+                            
+                            # Determine initial index for selectbox
+                            # Uses value from session state if available, otherwise uses the calculated default_rf_criterion
+                            try:
+                                current_criterion_val = st.session_state.get("rf_criterion", default_rf_criterion)
+                                # If the value from session state is no longer valid in current options, revert to default
+                                if current_criterion_val not in criterion_options_rf:
+                                    current_criterion_val = default_rf_criterion
+                                initial_criterion_index = criterion_options_rf.index(current_criterion_val)
+                            except ValueError: 
+                                # Fallback if default_rf_criterion itself is somehow not in options (e.g. options changed unexpectedly)
+                                initial_criterion_index = 0 
+
+                            criterion_rf = st.sidebar.selectbox("Criterion (RF)", criterion_options_rf, index=initial_criterion_index, key="rf_criterion")
+
+                            # Reset button for RF parameters
+                            if st.sidebar.button("Reset RF Parameters", key="rf_reset_params_button"):
+                                st.session_state.rf_n_estimators = default_rf_n_estimators
+                                st.session_state.rf_max_depth = default_rf_max_depth
+                                st.session_state.rf_min_samples_split = default_rf_min_samples_split
+                                st.session_state.rf_min_samples_leaf = default_rf_min_samples_leaf
+                                st.session_state.rf_criterion = default_rf_criterion
+                                st.rerun()
 
                             model_rf_instance.set_params(
                                 n_estimators=n_estimators_rf,
