@@ -9,13 +9,14 @@ import plotly.express as px
 import plotly.graph_objects as go
 from sklearn.cluster import KMeans
 from sklearn.ensemble import IsolationForest
-from sklearn.preprocessing import OneHotEncoder, StandardScaler, MinMaxScaler
+from sklearn.preprocessing import OneHotEncoder, StandardScaler, MinMaxScaler, PolynomialFeatures
 from sklearn.decomposition import PCA 
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor 
 from sklearn.metrics import mean_squared_error, r2_score, accuracy_score, classification_report
 import folium
+from sklearn.pipeline import Pipeline
 from sklearn.impute import SimpleImputer
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor, export_text, plot_tree
 from sklearn.ensemble import RandomForestClassifier # Added import
@@ -390,9 +391,16 @@ if uploaded_files:
                         # Train-test split
                         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
                         
+                        # Polynomial degree selection for Polynomial Regression
+                        poly_degree = st.number_input("Polynomial Degree (for Polynomial Regression)", min_value=2, max_value=5, value=2, step=1, key="automl_poly_degree")
+                        
                         # Model selection
                         models = {
                             "Linear Regression": LinearRegression(),
+                            "Polynomial Regression": Pipeline([
+                                ("poly_features", PolynomialFeatures(degree=poly_degree, include_bias=False)),
+                                ("lin_reg", LinearRegression())
+                            ]),
                             "Random Forest": RandomForestRegressor(n_estimators=50, random_state=42)
                         }
                         
