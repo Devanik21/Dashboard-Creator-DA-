@@ -65,9 +65,9 @@ A powerful, modern, and elegant Streamlit dashboard that automatically performs 
 
 ## 🧪 Demo
 
-Coming soon: [Live Streamlit App](https://streamlit.io) *(placeholder)*
+Coming soon: [Live Streamlit App](https://63uxugggjkkrghy7vuxkeh.streamlit.app/) 
 
-![Demo](https://via.placeholder.com/900x500?text=Insert+your+app+demo+gif+here)
+![Demo]([https://via.placeholder.com/900x500?text=Insert+your+app+demo+gif+here](https://63uxugggjkkrghy7vuxkeh.streamlit.app/))
 
 ---
 
@@ -104,7 +104,7 @@ Create a `.streamlit/secrets.toml` (optional) or input your Gemini API key throu
 
 ## 👨‍💻 Author
 
-**Prince**  — [@YourGitHubHandle](https://github.com/your-username)
+**Devanik**  — [Devanik21 ](https://github.com/Devanik21)
 National Institute of Technology | ECE | Passionate about AI, ML, and Cryptography
 
 > Built with love, magic, and Gemini ✨
