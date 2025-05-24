@@ -65,7 +65,7 @@ A powerful, modern, and elegant Streamlit dashboard that automatically performs 
 
 ## 🧪 Demo
 
-Coming soon: [Live Streamlit App](https://63uxugggjkkrghy7vuxkeh.streamlit.app/) 
+It's live ! : [Live Streamlit App](https://63uxugggjkkrghy7vuxkeh.streamlit.app/) 
 
 ![Demo]([https://via.placeholder.com/900x500?text=Insert+your+app+demo+gif+here](https://63uxugggjkkrghy7vuxkeh.streamlit.app/))
 
