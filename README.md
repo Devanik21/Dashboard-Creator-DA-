@@ -1,6 +1,5 @@
 # 💡 Advanced Interactive Data Dashboard with Gemini AI
 
-![App Banner](https://via.placeholder.com/1200x400?text=Your+Dashboard+Name+Here)
 
 A powerful, modern, and elegant Streamlit dashboard that automatically performs exploratory data analysis (EDA), machine learning, data cleaning, visualization, and Gemini-powered natural language insights — all with just a few clicks.
 
