@@ -3,6 +3,7 @@ nltk
 pandas
 numpy
 altair
+mlxtend
 matplotlib
 seaborn
 plotly
