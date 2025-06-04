@@ -30,6 +30,8 @@ import time # Import the time module
 import warnings # Import locally to keep dependencies clear
 from scipy import stats
 from statsmodels.tsa.holtwinters import ExponentialSmoothing
+from mlxtend.frequent_patterns import apriori, association_rules # For Market Basket
+from mlxtend.preprocessing import TransactionEncoder # For Market Basket
 import nltk # For Sentiment Analysis
 from sklearn.preprocessing import LabelEncoder # For Decision Tree target encoding
 from nltk.sentiment.vader import SentimentIntensityAnalyzer # For Sentiment Analysis
@@ -1774,6 +1776,142 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
             else:
                 st.info("No data available to display column summaries.")
 
+        # NEW FEATURE 29 (was 23): Advanced Cohort Analysis
+        with st.expander("📈 Advanced Cohort Analysis"):
+            st.subheader("Track User/Customer Behavior Over Time by Cohort")
+            if date_cols and categorical_cols + numeric_cols: # Need a customer/entity ID
+                entity_id_col_cohort = st.selectbox("Select Customer/Entity ID Column", categorical_cols + numeric_cols, key="cohort_entity_id")
+                cohort_date_col = st.selectbox("Select Acquisition/Event Date Column", date_cols, key="cohort_date_col")
+                metric_col_cohort = st.selectbox("Select Metric to Analyze (e.g., Revenue, Activity Count)", numeric_cols, key="cohort_metric_col")
+                
+                if entity_id_col_cohort and cohort_date_col and metric_col_cohort:
+                    if st.button("Analyze Cohorts", key="run_cohort_analysis"):
+                        try:
+                            cohort_df = df[[entity_id_col_cohort, cohort_date_col, metric_col_cohort]].copy().dropna()
+                            cohort_df[cohort_date_col] = pd.to_datetime(cohort_df[cohort_date_col])
+                            
+                            # Determine acquisition cohort (e.g., first purchase month)
+                            cohort_df['AcquisitionMonth'] = cohort_df.groupby(entity_id_col_cohort)[cohort_date_col].transform('min').dt.to_period('M')
+                            cohort_df['EventMonth'] = cohort_df[cohort_date_col].dt.to_period('M')
+                            
+                            # Calculate cohort period
+                            cohort_df['CohortPeriod'] = (cohort_df['EventMonth'].dt.year - cohort_df['AcquisitionMonth'].dt.year) * 12 + \
+                                                      (cohort_df['EventMonth'].dt.month - cohort_df['AcquisitionMonth'].dt.month)
+
+                            # Retention: Number of unique active customers per cohort period
+                            cohort_pivot_retention = cohort_df.groupby(['AcquisitionMonth', 'CohortPeriod'])[entity_id_col_cohort].nunique().reset_index()
+                            cohort_pivot_retention = cohort_pivot_retention.pivot_table(index='AcquisitionMonth', columns='CohortPeriod', values=entity_id_col_cohort)
+                            
+                            cohort_sizes = cohort_pivot_retention.iloc[:, 0]
+                            retention_matrix = cohort_pivot_retention.divide(cohort_sizes, axis=0) * 100
+
+                            st.write("#### Monthly Cohort Retention Rate (%)")
+                            fig_retention, ax_retention = plt.subplots(figsize=(12, max(6, len(retention_matrix)*0.4)))
+                            sns.heatmap(retention_matrix, annot=True, fmt='.1f', cmap='viridis', ax=ax_retention)
+                            ax_retention.set_title('Monthly Cohort Retention (%)')
+                            ax_retention.set_ylabel('Acquisition Month')
+                            ax_retention.set_xlabel('Months Since Acquisition')
+                            st.pyplot(fig_retention)
+
+                            # Behavior: Average metric value per cohort period
+                            cohort_pivot_behavior = cohort_df.groupby(['AcquisitionMonth', 'CohortPeriod'])[metric_col_cohort].mean().reset_index()
+                            cohort_pivot_behavior = cohort_pivot_behavior.pivot_table(index='AcquisitionMonth', columns='CohortPeriod', values=metric_col_cohort)
+                            
+                            st.write(f"#### Average '{metric_col_cohort}' by Cohort Period")
+                            fig_behavior, ax_behavior = plt.subplots(figsize=(12, max(6, len(cohort_pivot_behavior)*0.4)))
+                            sns.heatmap(cohort_pivot_behavior, annot=True, fmt='.2f', cmap='coolwarm', ax=ax_behavior)
+                            ax_behavior.set_title(f"Average '{metric_col_cohort}' by Cohort")
+                            ax_behavior.set_ylabel('Acquisition Month')
+                            ax_behavior.set_xlabel('Months Since Acquisition')
+                            st.pyplot(fig_behavior)
+
+                        except Exception as e:
+                            st.error(f"Error in Cohort Analysis: {e}")
+                else:
+                    st.info("Select Entity ID, Date, and Metric columns for cohort analysis.")
+            else:
+                st.info("Cohort analysis requires date columns and categorical/numeric columns for entity ID and metrics.")
+
+        # NEW FEATURE 30 (was 24): Market Basket Analysis
+        with st.expander("🧺 Market Basket Analysis (Association Rules)"):
+            st.subheader("Discover Frequently Co-purchased Items")
+            if categorical_cols: # Need at least two: transaction ID and item ID
+                transaction_id_col_mba = st.selectbox("Select Transaction ID Column", categorical_cols + numeric_cols, key="mba_transaction_id")
+                item_id_col_mba = st.selectbox("Select Item ID Column", categorical_cols + numeric_cols, key="mba_item_id")
+
+                if transaction_id_col_mba and item_id_col_mba:
+                    min_support_mba = st.slider("Minimum Support", 0.001, 0.1, 0.01, 0.001, format="%.3f", key="mba_min_support")
+                    min_confidence_mba = st.slider("Minimum Confidence", 0.1, 1.0, 0.5, 0.05, key="mba_min_confidence")
+
+                    if st.button("Run Market Basket Analysis", key="run_mba"):
+                        try:
+                            mba_df_prep = df[[transaction_id_col_mba, item_id_col_mba]].copy().dropna()
+                            # Create list of lists for transactions
+                            transactions_mba = mba_df_prep.groupby(transaction_id_col_mba)[item_id_col_mba].apply(lambda x: list(set(x))).tolist()
+                            transactions_mba = [t for t in transactions_mba if len(t) > 1] # Only transactions with >1 item
+
+                            if not transactions_mba:
+                                st.warning("No transactions with multiple items found for analysis.")
+                            else:
+                                te = TransactionEncoder()
+                                te_ary = te.fit(transactions_mba).transform(transactions_mba)
+                                basket_df_mba = pd.DataFrame(te_ary, columns=te.columns_)
+
+                                frequent_itemsets_mba = apriori(basket_df_mba, min_support=min_support_mba, use_colnames=True, max_len=5)
+                                if frequent_itemsets_mba.empty:
+                                    st.info(f"No frequent itemsets found with support >= {min_support_mba}. Try lowering support.")
+                                else:
+                                    st.write("#### Frequent Itemsets (Top 20)")
+                                    st.dataframe(frequent_itemsets_mba.sort_values("support", ascending=False).head(20))
+
+                                    rules_mba = association_rules(frequent_itemsets_mba, metric="confidence", min_threshold=min_confidence_mba)
+                                    if rules_mba.empty:
+                                        st.info(f"No association rules found with confidence >= {min_confidence_mba}. Try lowering confidence or adjusting support.")
+                                    else:
+                                        st.write("#### Association Rules (Top 30 by Lift)")
+                                        st.dataframe(rules_mba.sort_values(["lift", "confidence"], ascending=[False, False]).head(30))
+                        except Exception as e:
+                            st.error(f"Error in Market Basket Analysis: {e}")
+                else:
+                    st.info("Select Transaction ID and Item ID columns.")
+            else:
+                st.info("Market Basket Analysis requires categorical columns for transaction and item identifiers.")
+
+        # NEW FEATURE 31 (was 25): Geospatial Heatmap/Density Analysis
+        with st.expander("🔥 Geospatial Heatmap/Density Analysis"):
+            st.subheader("Visualize Data Concentration on a Map")
+            potential_lat_cols_hm = [col for col in numeric_cols if 'lat' in col.lower()]
+            potential_lon_cols_hm = [col for col in numeric_cols if 'lon' in col.lower() or 'lng' in col.lower()]
+
+            lat_col_hm_default = potential_lat_cols_hm[0] if potential_lat_cols_hm else None
+            lon_col_hm_default = potential_lon_cols_hm[0] if potential_lon_cols_hm else None
+
+            lat_col_hm = st.selectbox("Select Latitude Column for Heatmap", numeric_cols, index=numeric_cols.index(lat_col_hm_default) if lat_col_hm_default and lat_col_hm_default in numeric_cols else 0, key="geo_hm_lat")
+            lon_col_hm = st.selectbox("Select Longitude Column for Heatmap", numeric_cols, index=numeric_cols.index(lon_col_hm_default) if lon_col_hm_default and lon_col_hm_default in numeric_cols else (1 if len(numeric_cols) > 1 else 0), key="geo_hm_lon")
+            weight_col_hm = st.selectbox("Optional: Select Weight/Intensity Column", [None] + numeric_cols, key="geo_hm_weight")
+
+            if lat_col_hm and lon_col_hm:
+                if st.button("Generate Heatmap", key="run_heatmap"):
+                    heatmap_data = df[[lat_col_hm, lon_col_hm]].copy().dropna()
+                    if weight_col_hm:
+                        heatmap_data['weight'] = df[weight_col_hm]
+                        heatmap_data = heatmap_data.dropna(subset=['weight'])
+                    
+                    heatmap_data.columns = ['lat', 'lon'] + (['weight'] if weight_col_hm else [])
+
+                    if not heatmap_data.empty and (-90 <= heatmap_data['lat'].min() and heatmap_data['lat'].max() <= 90) and \
+                       (-180 <= heatmap_data['lon'].min() and heatmap_data['lon'].max() <= 180):
+                        
+                        m_heatmap = folium.Map(location=[heatmap_data['lat'].mean(), heatmap_data['lon'].mean()], zoom_start=6)
+                        from folium.plugins import HeatMap
+                        heat_data_points = [[row['lat'], row['lon'], row.get('weight', 1)] for index, row in heatmap_data.iterrows()]
+                        HeatMap(heat_data_points).add_to(m_heatmap)
+                        folium_static(m_heatmap)
+                    else:
+                        st.warning("No valid data points for heatmap or lat/lon values are out of range.")
+            else:
+                st.info("Select Latitude and Longitude columns to generate a heatmap.")
+
         # NEW FEATURE 29: Custom Theme Builder
         with st.expander("🖌️ Custom Theme Designer"):
             st.subheader("Create Your Custom Theme")
@@ -1831,6 +1969,60 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
                                  json.dumps(theme_config, indent=2),
                                  f"{theme_name.lower().replace(' ', '_')}_theme.json")
 
+        # NEW FEATURE 32 (was 26): Automated Narrative Report Generation (Gemini-Enhanced)
+        with st.expander("✍️ Automated Narrative Report Generation (Gemini-Enhanced)"):
+            st.subheader("Generate Text Summaries of Your Findings")
+            if gemini_api_key:
+                report_elements_options = ["Overall Data Summary", "Key Trends (if time series analyzed)", "Top Correlations", "Anomaly Insights", "Cluster Profiles (if K-Means run)"]
+                selected_report_elements = st.multiselect("Select Elements for Narrative Report", report_elements_options, default=report_elements_options[:2], key="narrative_elements")
+                report_tone = st.selectbox("Select Report Tone", ["Formal", "Informal", "Technical"], key="narrative_tone")
+                report_length = st.select_slider("Desired Report Length", options=["Brief", "Standard", "Detailed"], value="Standard", key="narrative_length")
+
+                if st.button("Generate Narrative Report with AI", key="run_narrative_report"):
+                    with st.spinner("AI is drafting your report..."):
+                        # Construct prompt based on selected elements and available data/analyses
+                        narrative_prompt = f"You are an expert data analyst. Based on the following dataset characteristics and potential analysis results, generate a {report_length}, {report_tone} narrative report. Focus on the following selected elements: {', '.join(selected_report_elements)}.\n\n"
+                        narrative_prompt += f"Dataset Overview: {df.shape[0]} rows, {df.shape[1]} columns. Columns are: {', '.join(df.columns.tolist())}.\n"
+                        if "Overall Data Summary" in selected_report_elements:
+                            narrative_prompt += f"Key descriptive stats (first 3 numeric columns):\n{df[numeric_cols[:3]].describe().to_string()}\n\n"
+                        # Add more context from other analyses if they were run (this part would need session_state or similar to track results)
+                        # For now, this is a simplified version.
+                        
+                        try:
+                            model_narrative = genai.GenerativeModel("gemini-2.0-flash") # or your preferred model
+                            response_narrative = model_narrative.generate_content(narrative_prompt)
+                            st.markdown("#### AI-Generated Narrative Report:")
+                            st.markdown(response_narrative.text)
+                            st.download_button("Download Narrative Report", response_narrative.text, file_name="ai_narrative_report.txt")
+                        except Exception as e:
+                            st.error(f"Gemini API Error for Narrative Report: {str(e)}")
+            else:
+                st.info("Enter your Gemini API key in the sidebar to enable AI-generated narrative reports.")
+
+        # NEW FEATURE 33 (was 27): Interactive Outlier Explanation
+        with st.expander("🕵️ Interactive Outlier Explanation"):
+            st.subheader("Understand Why a Data Point is an Outlier")
+            if 'anomalies_detected_df' in st.session_state and not st.session_state.anomalies_detected_df.empty: # Check if anomalies were detected
+                outlier_df = st.session_state.anomalies_detected_df
+                st.write("Previously detected outliers (from Anomaly Detection Dashboard):")
+                st.dataframe(outlier_df.head())
+
+                if not outlier_df.empty:
+                    selected_outlier_index = st.selectbox("Select an Outlier Index to Explain", outlier_df.index.tolist(), key="select_outlier_explain")
+                    if selected_outlier_index is not None:
+                        outlier_data_point = df.loc[selected_outlier_index]
+                        st.write(f"#### Explaining Outlier at Index: {selected_outlier_index}")
+                        st.write(outlier_data_point)
+                        
+                        # Placeholder for explanation logic (could use SHAP/LIME if a model was involved, or simple feature comparison)
+                        st.info("Explanation Feature (Conceptual): This outlier might be unusual due to...")
+                        for col in numeric_cols: # Example: compare to mean
+                            if col in outlier_data_point and pd.notna(outlier_data_point[col]):
+                                if outlier_data_point[col] > df[col].mean() + 2 * df[col].std() or outlier_data_point[col] < df[col].mean() - 2 * df[col].std():
+                                    st.write(f"- Its value for '{col}' ({outlier_data_point[col]:.2f}) is significantly different from the column mean ({df[col].mean():.2f}).")
+            else:
+                st.info("Run the 'Anomaly Detection Dashboard' first to identify outliers that can be explained.")
+
         # Auto-refresh functionality
         if refresh_interval > 0:
             time.sleep(refresh_interval)
@@ -1868,4 +2060,3 @@ with st.sidebar:
 
 
 st.image("d4.jpg", caption="Data Analysis meets AI meets Elegance.", use_container_width=True)
-
