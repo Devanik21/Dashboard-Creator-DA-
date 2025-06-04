@@ -3,6 +3,7 @@ nltk
 pandas
 numpy
 altair
+wordcloud 
 mlxtend
 networkx 
 matplotlib
