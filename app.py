@@ -33,6 +33,10 @@ from statsmodels.tsa.holtwinters import ExponentialSmoothing
 from mlxtend.frequent_patterns import apriori, association_rules # For Market Basket
 from mlxtend.preprocessing import TransactionEncoder # For Market Basket
 import nltk # For Sentiment Analysis
+import networkx as nx # For Network Analysis
+from wordcloud import WordCloud # For Text Profiler
+from scipy.stats import norm, lognorm, expon, weibull_min # For Distribution Fitting
+import matplotlib.cm as cm # For Distribution Fitting plot colors
 from sklearn.preprocessing import LabelEncoder # For Decision Tree target encoding
 from nltk.sentiment.vader import SentimentIntensityAnalyzer # For Sentiment Analysis
 warnings.filterwarnings('ignore')
@@ -1911,6 +1915,365 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
                         st.warning("No valid data points for heatmap or lat/lon values are out of range.")
             else:
                 st.info("Select Latitude and Longitude columns to generate a heatmap.")
+
+        # NEW FEATURE: Network Analysis of Categorical Co-occurrence
+        with st.expander("🕸️ Network Analysis of Categorical Co-occurrence"):
+            st.subheader("Visualize Relationships Between Categorical Values")
+            if len(categorical_cols) >= 2:
+                col1_net = st.selectbox("Select First Categorical Column", categorical_cols, key="net_col1")
+                col2_net_options = [c for c in categorical_cols if c != col1_net]
+                if col2_net_options:
+                    col2_net = st.selectbox("Select Second Categorical Column", col2_net_options, key="net_col2")
+
+                    if col1_net and col2_net:
+                        if st.button("Generate Co-occurrence Network", key="run_network_analysis"):
+                            try:
+                                net_df = df[[col1_net, col2_net]].copy().dropna()
+                                if net_df.empty:
+                                    st.warning("No data available for network analysis after dropping NaNs.")
+                                else:
+                                    st.write(f"#### Co-occurrence Network: '{col1_net}' vs '{col2_net}'")
+
+                                    # Create edges based on co-occurrence in the same row
+                                    edges = net_df.apply(lambda row: tuple(sorted((row[col1_net], row[col2_net]))), axis=1)
+                                    edge_counts = edges.value_counts().reset_index()
+                                    edge_counts.columns = ['Pair', 'Frequency']
+
+                                    # Filter by minimum frequency
+                                    min_freq_net = st.slider("Minimum Co-occurrence Frequency to show edge", 1, int(edge_counts['Frequency'].max()), max(1, int(edge_counts['Frequency'].quantile(0.8))), key="net_min_freq")
+                                    filtered_edges = edge_counts[edge_counts['Frequency'] >= min_freq_net]
+
+                                    if filtered_edges.empty:
+                                        st.info(f"No pairs found with co-occurrence frequency >= {min_freq_net}. Try lowering the threshold.")
+                                    else:
+                                        st.write(f"Top Co-occurring Pairs (Frequency >= {min_freq_net}):")
+                                        st.dataframe(filtered_edges.head(20))
+
+                                        # Build NetworkX graph
+                                        G = nx.Graph()
+                                        for index, row in filtered_edges.iterrows():
+                                            node1, node2 = row['Pair']
+                                            freq = row['Frequency']
+                                            G.add_edge(node1, node2, weight=freq)
+
+                                        if G.number_of_nodes() > 0:
+                                            # Draw the network
+                                            fig_net, ax_net = plt.subplots(figsize=(10, 8))
+                                            pos = nx.spring_layout(G, k=0.5, iterations=50) # Layout algorithm
+                                            
+                                            # Draw nodes
+                                            node_size = [G.degree(node) * 50 + 100 for node in G.nodes()] # Size based on degree
+                                            nx.draw_networkx_nodes(G, pos, node_size=node_size, node_color='skyblue', alpha=0.9, ax=ax_net)
+
+                                            # Draw edges
+                                            edge_width = [d['weight'] / edge_counts['Frequency'].max() * 5 for (u, v, d) in G.edges(data=True)] # Width based on frequency
+                                            nx.draw_networkx_edges(G, pos, width=edge_width, edge_color='gray', alpha=0.6, ax=ax_net)
+
+                                            # Draw labels
+                                            nx.draw_networkx_labels(G, pos, font_size=10, ax=ax_net)
+
+                                            ax_net.set_title(f"Co-occurrence Network: {col1_net} vs {col2_net}")
+                                            plt.axis('off')
+                                            st.pyplot(fig_net)
+                                        else:
+                                            st.info("Network graph could not be generated (likely due to filtering resulting in no connected nodes).")
+
+                            except Exception as e:
+                                st.error(f"Error during network analysis: {e}")
+                else:
+                    st.warning("Need at least two distinct categorical columns.")
+            else:
+                st.info("Network analysis requires at least two categorical columns.")
+
+        # NEW FEATURE: Automated Feature Engineering Suggestions
+        with st.expander("🛠️ Automated Feature Engineering Suggestions"):
+            st.subheader("Get Suggestions for New Features")
+            st.info("This tool suggests potential new features based on existing columns. Select suggestions to add them to your DataFrame.")
+
+            suggestions_list = []
+
+            # Date Feature Extraction
+            if date_cols:
+                for d_col in date_cols:
+                    suggestions_list.append({'Type': 'Date Part', 'Columns': [d_col], 'New Feature': f'{d_col}_year', 'Description': f'Year from {d_col}'})
+                    suggestions_list.append({'Type': 'Date Part', 'Columns': [d_col], 'New Feature': f'{d_col}_month', 'Description': f'Month from {d_col}'})
+                    suggestions_list.append({'Type': 'Date Part', 'Columns': [d_col], 'New Feature': f'{d_col}_day', 'Description': f'Day of month from {d_col}'})
+                    suggestions_list.append({'Type': 'Date Part', 'Columns': [d_col], 'New Feature': f'{d_col}_dayofweek', 'Description': f'Day of week from {d_col}'})
+                    suggestions_list.append({'Type': 'Date Part', 'Columns': [d_col], 'New Feature': f'{d_col}_dayofyear', 'Description': f'Day of year from {d_col}'})
+                    suggestions_list.append({'Type': 'Date Part', 'Columns': [d_col], 'New Feature': f'{d_col}_weekofyear', 'Description': f'Week of year from {d_col}'})
+                    suggestions_list.append({'Type': 'Date Part', 'Columns': [d_col], 'New Feature': f'{d_col}_quarter', 'Description': f'Quarter from {d_col}'})
+
+            # Numeric Interaction Terms (simple pairs)
+            if len(numeric_cols) >= 2:
+                for i in range(len(numeric_cols)):
+                    for j in range(i + 1, len(numeric_cols)):
+                        col1, col2 = numeric_cols[i], numeric_cols[j]
+                        suggestions_list.append({'Type': 'Interaction', 'Columns': [col1, col2], 'New Feature': f'{col1}_x_{col2}', 'Description': f'Interaction term: {col1} * {col2}'})
+                        # Add ratio if denominator is likely non-zero
+                        if df[col2].fillna(0).min() >= 0 and df[col2].fillna(0).sum() > 0: # Simple check for potential division by zero
+                             suggestions_list.append({'Type': 'Ratio', 'Columns': [col1, col2], 'New Feature': f'{col1}_div_{col2}', 'Description': f'Ratio: {col1} / {col2}'})
+
+            # Simple Polynomial Features (Square)
+            if numeric_cols:
+                for n_col in numeric_cols:
+                     suggestions_list.append({'Type': 'Polynomial', 'Columns': [n_col], 'New Feature': f'{n_col}_squared', 'Description': f'Square of {n_col}'})
+
+            if suggestions_list:
+                suggestions_df = pd.DataFrame(suggestions_list)
+                st.write("#### Suggested Features:")
+                st.dataframe(suggestions_df)
+
+                selected_suggestions_indices = st.multiselect(
+                    "Select suggestions to add to DataFrame (select by index from table above)",
+                    suggestions_df.index.tolist(),
+                    key="selected_fe_suggestions"
+                )
+
+                if st.button("Add Selected Features", key="add_fe_button"):
+                    if selected_suggestions_indices:
+                        for idx in selected_suggestions_indices:
+                            suggestion = suggestions_df.loc[idx]
+                            new_col_name = suggestion['New Feature']
+                            col_type = suggestion['Type']
+                            source_cols = suggestion['Columns']
+
+                            if new_col_name in df.columns:
+                                st.warning(f"Column '{new_col_name}' already exists. Skipping.")
+                                continue
+
+                            try:
+                                if col_type == 'Date Part':
+                                    source_col = source_cols[0]
+                                    if suggestion['New Feature'].endswith('_year'):
+                                        df[new_col_name] = df[source_col].dt.year
+                                    elif suggestion['New Feature'].endswith('_month'):
+                                        df[new_col_name] = df[source_col].dt.month
+                                    elif suggestion['New Feature'].endswith('_day'):
+                                        df[new_col_name] = df[source_col].dt.day
+                                    elif suggestion['New Feature'].endswith('_dayofweek'):
+                                        df[new_col_name] = df[source_col].dt.dayofweek # Monday=0, Sunday=6
+                                    elif suggestion['New Feature'].endswith('_dayofyear'):
+                                        df[new_col_name] = df[source_col].dt.dayofyear
+                                    elif suggestion['New Feature'].endswith('_weekofyear'):
+                                        df[new_col_name] = df[source_col].dt.isocalendar().week.astype(int) # Use isocalendar for week
+                                    elif suggestion['New Feature'].endswith('_quarter'):
+                                        df[new_col_name] = df[source_col].dt.quarter
+                                elif col_type == 'Interaction':
+                                    col1, col2 = source_cols
+                                    df[new_col_name] = df[col1] * df[col2]
+                                elif col_type == 'Ratio':
+                                     col1, col2 = source_cols
+                                     df[new_col_name] = df[col1] / df[col2].replace(0, np.nan) # Replace 0 with NaN to avoid inf
+                                elif col_type == 'Polynomial':
+                                     source_col = source_cols[0]
+                                     df[new_col_name] = df[source_col] ** 2
+
+                                st.success(f"Added new feature: '{new_col_name}' ({col_type})")
+                                # Update column lists and rerun
+                                if pd.api.types.is_numeric_dtype(df[new_col_name]) and new_col_name not in numeric_cols:
+                                    numeric_cols.append(new_col_name)
+                                elif df[new_col_name].dtype == 'object' and new_col_name not in categorical_cols:
+                                    categorical_cols.append(new_col_name)
+                                elif pd.api.types.is_datetime64_any_dtype(df[new_col_name]) and new_col_name not in date_cols:
+                                     date_cols.append(new_col_name)
+                                # Rerun to update selectboxes and analysis options
+                                st.rerun()
+
+                            except Exception as e:
+                                st.error(f"Error creating feature '{new_col_name}': {e}")
+                    else:
+                        st.info("Select at least one suggestion to add features.")
+            else:
+                st.info("No feature engineering suggestions could be generated based on available column types.")
+
+        # NEW FEATURE: Simple What-If Scenario Builder
+        with st.expander("💡 Simple What-If Scenario Builder"):
+            st.subheader("Predict Outcome Based on Input Change")
+            st.info("Uses a simple linear regression model to estimate the impact of changing one numeric variable on another.")
+            if len(numeric_cols) >= 2:
+                input_col_wi = st.selectbox("Select Input Variable", numeric_cols, key="wi_input_col")
+                output_col_wi = st.selectbox("Select Output Variable", [c for c in numeric_cols if c != input_col_wi], key="wi_output_col")
+
+                if input_col_wi and output_col_wi:
+                    wi_df = df[[input_col_wi, output_col_wi]].dropna()
+
+                    if len(wi_df) >= 2:
+                        try:
+                            # Train a simple linear regression model
+                            X_wi = wi_df[[input_col_wi]]
+                            y_wi = wi_df[output_col_wi]
+                            model_wi = LinearRegression()
+                            model_wi.fit(X_wi, y_wi)
+
+                            st.write(f"Model: `{output_col_wi}` ≈ {model_wi.coef_[0]:.2f} * `{input_col_wi}` + {model_wi.intercept_:.2f}")
+                            st.write(f"R-squared of model: {r2_score(y_wi, model_wi.predict(X_wi)):.2f}")
+
+                            st.write("#### Scenario Input")
+                            current_avg_input = wi_df[input_col_wi].mean()
+                            st.write(f"Current Average `{input_col_col_wi}`: {current_avg_input:.2f}")
+
+                            scenario_type = st.radio("Change Input By:", ["New Value", "Percentage Change"], key="wi_scenario_type")
+
+                            if scenario_type == "New Value":
+                                new_input_value = st.number_input(f"Enter New Value for '{input_col_wi}'", value=current_avg_input, key="wi_new_value")
+                                scenario_input = np.array([[new_input_value]])
+                            else: # Percentage Change
+                                percentage_change = st.slider(f"Percentage Change in '{input_col_wi}'", -100, 100, 10, key="wi_pct_change")
+                                new_input_value = current_avg_input * (1 + percentage_change / 100.0)
+                                scenario_input = np.array([[new_input_value]])
+
+                            if st.button("Predict Outcome", key="run_what_if"):
+                                predicted_output = model_wi.predict(scenario_input)[0]
+                                st.write("#### Predicted Outcome")
+                                st.metric(f"Predicted '{output_col_wi}'", f"{predicted_output:.2f}")
+                                st.caption("Note: This is a simple linear model prediction. Actual outcomes may vary.")
+
+                        except Exception as e:
+                            st.error(f"Error during What-If analysis: {e}")
+                    else:
+                        st.warning("Not enough data points (minimum 2) for the selected columns after dropping NaNs to build a model.")
+            else:
+                st.info("What-If scenario builder requires at least two numeric columns.")
+
+        # NEW FEATURE: Text Column Profiler & Keyword Extractor
+        with st.expander("📝 Text Column Profiler & Keyword Extractor"):
+            st.subheader("Analyze Text Content")
+            text_cols_profiler = df.select_dtypes(include='object').columns.tolist() # Only object type for text
+            if text_cols_profiler:
+                selected_text_col_profiler = st.selectbox(
+                    "Select Text Column to Profile",
+                    text_cols_profiler,
+                    key="profiler_text_col"
+                )
+
+                if selected_text_col_profiler:
+                    if st.button("Profile Text Column", key="run_text_profiler"):
+                        try:
+                            text_series = df[selected_text_col_profiler].astype(str).dropna()
+                            if text_series.empty:
+                                st.warning("Selected text column is empty after dropping NaNs.")
+                            else:
+                                st.write(f"#### Profile for '{selected_text_col_profiler}'")
+                                
+                                # Basic Stats
+                                total_texts = len(text_series)
+                                total_words = text_series.apply(lambda x: len(x.split())).sum()
+                                avg_words_per_text = total_words / total_texts if total_texts > 0 else 0
+                                
+                                st.write(f"- **Total Entries:** {total_texts}")
+                                st.write(f"- **Total Words:** {total_words}")
+                                st.write(f"- **Average Words per Entry:** {avg_words_per_text:.2f}")
+
+                                # Top Keywords (TF-IDF)
+                                st.write("#### Top Keywords (TF-IDF)")
+                                try:
+                                    from sklearn.feature_extraction.text import TfidfVectorizer
+                                    tfidf = TfidfVectorizer(max_features=50, stop_words='english') # Limit features for performance
+                                    tfidf_matrix = tfidf.fit_transform(text_series)
+                                    feature_names = tfidf.get_feature_names_out()
+                                    
+                                    # Sum TF-IDF scores for each word across all documents
+                                    tfidf_scores = tfidf_matrix.sum(axis=0)
+                                    tfidf_df = pd.DataFrame(tfidf_scores, columns=['score'], index=feature_names)
+                                    tfidf_df = tfidf_df.sort_values('score', ascending=False)
+
+                                    st.dataframe(tfidf_df.head(20))
+
+                                    # Word Cloud
+                                    st.write("#### Word Cloud of Top Keywords")
+                                    wordcloud = WordCloud(width=800, height=400, background_color='white').generate_from_frequencies(tfidf_df['score'].to_dict())
+                                    fig_wc, ax_wc = plt.subplots(figsize=(10, 5))
+                                    ax_wc.imshow(wordcloud, interpolation='bilinear')
+                                    ax_wc.axis('off')
+                                    st.pyplot(fig_wc)
+
+                                except ImportError:
+                                    st.warning("Scikit-learn not installed. Cannot perform TF-IDF keyword extraction.")
+                                except Exception as e:
+                                    st.error(f"Error during TF-IDF or Word Cloud generation: {e}")
+
+                        except Exception as e:
+                            st.error(f"Error profiling text column: {e}")
+            else:
+                st.info("No text (object/string) columns found for profiling.")
+
+        # NEW FEATURE: Distribution Fitting & Goodness-of-Fit Test
+        with st.expander("🧬 Distribution Fitting & Goodness-of-Fit Test"):
+            st.subheader("Fit Statistical Distributions to Numeric Data")
+            if numeric_cols:
+                dist_col = st.selectbox("Select Numeric Column to Fit Distribution", numeric_cols, key="dist_fit_col")
+
+                if dist_col:
+                    if st.button("Fit Distributions", key="run_dist_fitting"):
+                        try:
+                            data_to_fit = df[dist_col].dropna()
+                            if data_to_fit.empty or len(data_to_fit) < 20: # Need reasonable data points
+                                st.warning("Not enough data points (minimum 20 recommended) after dropping NaNs for distribution fitting.")
+                            else:
+                                st.write(f"#### Distribution Fitting Results for '{dist_col}'")
+
+                                # Distributions to test (common ones)
+                                distributions = [norm, lognorm, expon, weibull_min]
+                                results_dist = []
+
+                                for distribution in distributions:
+                                    try:
+                                        # Fit distribution to data
+                                        params = distribution.fit(data_to_fit)
+
+                                        # Perform Kolmogorov-Smirnov test for goodness-of-fit
+                                        # Compare data distribution to the fitted distribution
+                                        ks_statistic, p_value_ks = stats.kstest(data_to_fit, distribution.cdf, args=params)
+
+                                        results_dist.append({
+                                            'Distribution': distribution.name,
+                                            'Parameters': params,
+                                            'KS Statistic': ks_statistic,
+                                            'P-value (KS Test)': p_value_ks
+                                        })
+                                    except Exception as e:
+                                        st.warning(f"Could not fit {distribution.name}: {e}")
+
+                                if results_dist:
+                                    results_df_dist = pd.DataFrame(results_dist).sort_values('P-value (KS Test)', ascending=False)
+                                    st.dataframe(results_df_dist)
+
+                                    # Find the best fitting distribution (highest p-value)
+                                    best_fit_row = results_df_dist.iloc[0]
+                                    best_distribution_name = best_fit_row['Distribution']
+                                    best_distribution = getattr(stats, best_distribution_name)
+                                    best_params = best_fit_row['Parameters']
+
+                                    st.info(f"**Best Fitting Distribution (based on highest KS p-value):** {best_distribution_name}")
+                                    st.write(f"Parameters: {best_params}")
+                                    if best_fit_row['P-value (KS Test)'] >= 0.05:
+                                        st.success("The data does not significantly differ from this distribution (at alpha=0.05).")
+                                    else:
+                                        st.warning("The data significantly differs from this distribution (at alpha=0.05).")
+
+                                    # Plot histogram with fitted PDF
+                                    fig_dist, ax_dist = plt.subplots()
+                                    ax_dist.hist(data_to_fit, bins=30, density=True, alpha=0.6, color=custom_color, label='Data Histogram')
+
+                                    # Plot PDF of the best-fitting distribution
+                                    xmin, xmax = plt.xlim()
+                                    x = np.linspace(xmin, xmax, 100)
+                                    p = best_distribution.pdf(x, *best_params)
+                                    ax_dist.plot(x, p, 'k', linewidth=2, label=f'Fitted {best_distribution_name} PDF')
+
+                                    ax_dist.set_title(f"Distribution Fit for '{dist_col}'")
+                                    ax_dist.set_xlabel(dist_col)
+                                    ax_dist.set_ylabel("Density")
+                                    ax_dist.legend()
+                                    st.pyplot(fig_dist)
+
+                                else:
+                                    st.warning("No distributions could be fitted successfully.")
+
+                        except Exception as e:
+                            st.error(f"Error during distribution fitting: {e}")
+            else:
+                st.info("Distribution fitting requires a numeric column.")
 
         # NEW FEATURE 29: Custom Theme Builder
         with st.expander("🖌️ Custom Theme Designer"):
