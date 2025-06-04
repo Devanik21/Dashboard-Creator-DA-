@@ -2110,7 +2110,7 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 
                             st.write("#### Scenario Input")
                             current_avg_input = wi_df[input_col_wi].mean()
-                            st.write(f"Current Average `{input_col_col_wi}`: {current_avg_input:.2f}")
+                            st.write(f"Current Average `{input_col_wi}`: {current_avg_input:.2f}")
 
                             scenario_type = st.radio("Change Input By:", ["New Value", "Percentage Change"], key="wi_scenario_type")
 
