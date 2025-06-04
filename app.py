@@ -2174,7 +2174,7 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
                                     
                                     # Sum TF-IDF scores for each word across all documents
                                     tfidf_scores = tfidf_matrix.sum(axis=0)
-                                    tfidf_df = pd.DataFrame(tfidf_scores, columns=['score'], index=feature_names)
+                                    tfidf_df = pd.DataFrame(tfidf_scores.A1, columns=['score'], index=feature_names) # Corrected line
                                     tfidf_df = tfidf_df.sort_values('score', ascending=False)
 
                                     st.dataframe(tfidf_df.head(20))
