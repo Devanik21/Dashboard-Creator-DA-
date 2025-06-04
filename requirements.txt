@@ -4,6 +4,7 @@ pandas
 numpy
 altair
 mlxtend
+networkx 
 matplotlib
 seaborn
 plotly
