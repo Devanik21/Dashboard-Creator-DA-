@@ -2959,20 +2959,34 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
             if text_cols_lda:
                 lda_text_col = st.selectbox("Select Text Column for LDA", text_cols_lda, key="lda_text_col")
                 lda_num_topics = st.slider("Number of Topics", 2, 20, 5, key="lda_num_topics")
-                lda_max_features = st.number_input("Max Features for Vectorizer (vocabulary size)", 100, 5000, 1000, key="lda_max_features")
+                
+                col_lda1, col_lda2, col_lda3 = st.columns(3)
+                with col_lda1:
+                    lda_max_features = st.number_input("Max Features (Vocab Size)", 100, 10000, 1000, step=100, key="lda_max_features")
+                with col_lda2:
+                    # min_df can be an int (absolute count) or float (proportion)
+                    # For simplicity, let's use int here.
+                    lda_min_df = st.number_input("Min Document Frequency (min_df)", 1, 100, 2, step=1, key="lda_min_df", help="Minimum number of documents a word must appear in.")
+                with col_lda3:
+                    lda_max_df = st.slider("Max Document Frequency (max_df)", 0.50, 1.0, 0.95, step=0.01, key="lda_max_df", help="Maximum proportion of documents a word can appear in.")
+                
                 lda_top_n_words = st.number_input("Top N Words per Topic to Display", 5, 20, 10, key="lda_top_n_words")
 
                 if lda_text_col:
                     if st.button("Run LDA Topic Modeling", key="run_lda"):
                         lda_data = df[lda_text_col].astype(str).dropna()
                         if lda_data.empty or len(lda_data) < lda_num_topics:
-                            st.warning("Not enough text data or fewer documents than topics.")
+                            st.warning("Not enough text data or fewer documents than the specified number of topics.")
                         else:
                             try:
                                 # Create Document-Term Matrix
-                                vectorizer = CountVectorizer(max_df=0.95, min_df=2, max_features=lda_max_features, stop_words='english')
+                                vectorizer = CountVectorizer(max_df=lda_max_df, min_df=lda_min_df, max_features=lda_max_features, stop_words='english')
                                 dtm = vectorizer.fit_transform(lda_data)
                                 feature_names_lda = vectorizer.get_feature_names_out()
+
+                                if dtm.shape[1] == 0: # Check if any terms remained
+                                    st.error("After pruning with the current min_df, max_df, and max_features settings, no terms remain in the vocabulary. Please try adjusting these parameters (e.g., lower min_df, higher max_df, or increase max_features).")
+                                    st.stop()
 
                                 # Fit LDA model
                                 lda_model = LatentDirichletAllocation(n_components=lda_num_topics, random_state=42, learning_method='online')
