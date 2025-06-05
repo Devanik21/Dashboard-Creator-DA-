@@ -921,6 +921,10 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
                         cluster_data_copy = cluster_data.copy() # Avoid SettingWithCopyWarning
                         cluster_data_copy['Cluster'] = kmeans.fit_predict(cluster_data_copy)
                         
+                        # Add the 'Cluster' column back to the main DataFrame
+                        # Ensure alignment by using the index from cluster_data (which came from df.dropna())
+                        df.loc[cluster_data.index, 'Cluster'] = cluster_data_copy['Cluster']
+                        
                         st.write("Cluster Centers:")
                         st.dataframe(pd.DataFrame(kmeans.cluster_centers_, columns=cluster_features))
                         
