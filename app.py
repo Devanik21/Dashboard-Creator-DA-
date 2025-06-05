@@ -2319,16 +2319,16 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
             
             col1, col2 = st.columns(2)
             with col1:
-                primary_color = st.color_picker("Primary Color", "#38B2AC")      # Teal
-                secondary_color = st.color_picker("Secondary Color", "#805AD5")  # Purple
-                text_color = st.color_picker("Text Color", "#E2E8F0")            # Light Gray
+                primary_color = st.color_picker("Primary Color", "#38B2AC", key="theme_primary_color")      # Teal
+                secondary_color = st.color_picker("Secondary Color", "#805AD5", key="theme_secondary_color")  # Purple
+                text_color = st.color_picker("Text Color", "#E2E8F0", key="theme_text_color")            # Light Gray
             with col2:
-                bg_color = st.color_picker("Background Color", "#1A202C")        # Very Dark Blue/Gray
-                accent_color = st.color_picker("Accent Color", "#ED8936")        # Orange
+                bg_color = st.color_picker("Background Color", "#1A202C", key="theme_bg_color")        # Very Dark Blue/Gray
+                accent_color = st.color_picker("Accent Color", "#ED8936", key="theme_accent_color")        # Orange
                 
-            theme_name = st.text_input("Theme Name", "My Custom Theme")
+            theme_name = st.text_input("Theme Name", "My Custom Theme", key="theme_name_input")
 
-            if st.button("Apply Custom Theme"):
+            if st.button("Apply Custom Theme", key="theme_apply_button"):
                 custom_css = f"""
                 <style>
                 .stApp {{
@@ -2752,7 +2752,8 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
                 }
                 st.download_button("Download Theme", 
                                  json.dumps(theme_config, indent=2),
-                                 f"{theme_name.lower().replace(' ', '_')}_theme.json")
+                                 f"{theme_name.lower().replace(' ', '_')}_theme.json",
+                                 key="theme_download_button")
 
         # Auto-refresh functionality
         if refresh_interval > 0:
