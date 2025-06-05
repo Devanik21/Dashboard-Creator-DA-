@@ -3000,12 +3000,11 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
                                     topics_display[f"Topic {topic_idx+1}"] = ", ".join(top_words)
                                 st.json(topics_display)
 
-                                # Optional: Document-topic distribution (can be large)
-                                if st.checkbox("Show Document-Topic Distribution (sample)?", key="lda_show_doc_topic"):
-                                    doc_topic_dist = lda_model.transform(dtm)
-                                    doc_topic_df = pd.DataFrame(doc_topic_dist, columns=[f"Topic {i+1}" for i in range(lda_num_topics)])
-                                    st.write("Document-Topic Distribution (First 100 rows):")
-                                    st.dataframe(doc_topic_df.head(100))
+                                # Display Document-Topic Distribution (sample) by default
+                                doc_topic_dist = lda_model.transform(dtm)
+                                doc_topic_df = pd.DataFrame(doc_topic_dist, columns=[f"Topic {i+1}" for i in range(lda_num_topics)])
+                                st.write("#### Document-Topic Distribution (First 100 rows):")
+                                st.dataframe(doc_topic_df.head(100))
 
                             except Exception as e:
                                 st.error(f"Error during LDA Topic Modeling: {e}")
