@@ -39,6 +39,8 @@ import networkx as nx # For Network Analysis
 from wordcloud import WordCloud # For Text Profiler
 from scipy.stats import norm, lognorm, expon, weibull_min # For Distribution Fitting
 import matplotlib.cm as cm # For Distribution Fitting plot colors
+from statsmodels.tsa.stattools import ccf # For Time-Lagged Cross-Correlation
+from lifelines import KaplanMeierFitter # For Survival Analysis
 from sklearn.preprocessing import LabelEncoder # For Decision Tree target encoding
 from nltk.sentiment.vader import SentimentIntensityAnalyzer # For Sentiment Analysis
 warnings.filterwarnings('ignore')
@@ -2643,6 +2645,279 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
             else:
                 st.info("Comparative Product Performance requires categorical columns (for Product ID) and numeric columns (for metrics and profiling).")
 
+        # NEW TOOL 1: Time-Lagged Cross-Correlation Analysis
+        with st.expander("🕰️ Time-Lagged Cross-Correlation Analysis"):
+            st.subheader("Analyze Leading/Lagging Relationships Between Time Series")
+            st.info("This tool calculates the cross-correlation between two time series to identify if one series leads or lags the other. Requires two numeric columns and one date column.")
+            if len(date_cols) > 0 and len(numeric_cols) >= 2:
+                tlcc_date_col = st.selectbox("Select Date Column for Time Series", date_cols, key="tlcc_date")
+                tlcc_col1 = st.selectbox("Select First Numeric Column (Series 1)", numeric_cols, key="tlcc_col1")
+                tlcc_col2_options = [col for col in numeric_cols if col != tlcc_col1]
+                if tlcc_col2_options:
+                    tlcc_col2 = st.selectbox("Select Second Numeric Column (Series 2)", tlcc_col2_options, key="tlcc_col2")
+                    max_lag = st.slider("Maximum Lag to Consider", 1, 100, 20, key="tlcc_max_lag")
+
+                    if tlcc_date_col and tlcc_col1 and tlcc_col2:
+                        if st.button("Run Time-Lagged Cross-Correlation", key="run_tlcc"):
+                            try:
+                                tlcc_df_prep = df[[tlcc_date_col, tlcc_col1, tlcc_col2]].copy().dropna()
+                                tlcc_df_prep = tlcc_df_prep.sort_values(tlcc_date_col)
+                                
+                                # Resample to a consistent frequency (e.g., daily mean) to handle irregular timestamps
+                                series1 = tlcc_df_prep.set_index(tlcc_date_col)[tlcc_col1].resample('D').mean().fillna(method='ffill').dropna()
+                                series2 = tlcc_df_prep.set_index(tlcc_date_col)[tlcc_col2].resample('D').mean().fillna(method='ffill').dropna()
+
+                                # Align series by index
+                                common_index = series1.index.intersection(series2.index)
+                                series1_aligned = series1.loc[common_index]
+                                series2_aligned = series2.loc[common_index]
+
+                                if len(series1_aligned) < max_lag + 5 or len(series2_aligned) < max_lag + 5: # Need enough data
+                                    st.warning(f"Not enough overlapping data points after resampling for the chosen lag ({max_lag}). Need at least {max_lag+5} points.")
+                                else:
+                                    cross_corr_values = ccf(series1_aligned, series2_aligned, adjusted=False, fft=True)[:max_lag+1] # Calculate for positive lags
+                                    lags = np.arange(0, max_lag + 1)
+
+                                    fig_tlcc = go.Figure()
+                                    fig_tlcc.add_trace(go.Bar(x=lags, y=cross_corr_values, name=f'Cross-correlation ({tlcc_col1} vs {tlcc_col2})', marker_color=custom_color))
+                                    fig_tlcc.update_layout(
+                                        title=f"Time-Lagged Cross-Correlation: {tlcc_col1} leads/lags {tlcc_col2}",
+                                        xaxis_title=f"Lag (Positive lag means {tlcc_col1} leads {tlcc_col2})",
+                                        yaxis_title="Cross-correlation Coefficient"
+                                    )
+                                    st.plotly_chart(fig_tlcc, use_container_width=True)
+
+                                    peak_corr_lag = lags[np.argmax(np.abs(cross_corr_values))]
+                                    peak_corr_val = cross_corr_values[np.argmax(np.abs(cross_corr_values))]
+                                    st.info(f"Peak absolute correlation of {peak_corr_val:.3f} occurs at lag {peak_corr_lag}. This suggests the strongest relationship when '{tlcc_col1}' is shifted by {peak_corr_lag} periods relative to '{tlcc_col2}'.")
+
+                            except Exception as e:
+                                st.error(f"Error during Time-Lagged Cross-Correlation: {e}")
+                else:
+                    st.info("Select a date column and two distinct numeric columns.")
+            else:
+                st.info("Time-Lagged Cross-Correlation requires at least one date column and two numeric columns.")
+
+        # NEW TOOL 2: Interactive Segment Profiler (Rule-Based)
+        with st.expander("📐 Interactive Segment Profiler (Rule-Based)"):
+            st.subheader("Define and Profile Custom Data Segments")
+            st.info("Create segments by defining rules on one or more columns, then analyze their characteristics.")
+
+            if not df.empty:
+                num_rules = st.number_input("Number of Rules to Define Segment", 1, 5, 1, key="isp_num_rules")
+                rules = []
+                for i in range(num_rules):
+                    st.markdown(f"--- **Rule {i+1}** ---")
+                    rule_col = st.selectbox(f"Select Column for Rule {i+1}", df.columns, key=f"isp_rule_col_{i}")
+                    
+                    if rule_col:
+                        if pd.api.types.is_numeric_dtype(df[rule_col]):
+                            operator = st.selectbox(f"Operator for Rule {i+1}", [">", ">=", "<", "<=", "==", "!="], key=f"isp_op_num_{i}")
+                            value = st.number_input(f"Value for Rule {i+1} ({df[rule_col].min()} to {df[rule_col].max()})", value=df[rule_col].median(), key=f"isp_val_num_{i}")
+                            rules.append({'column': rule_col, 'operator': operator, 'value': value})
+                        else: # Categorical/Object/Date
+                            operator = st.selectbox(f"Operator for Rule {i+1}", ["is", "is not", "contains", "does not contain"], key=f"isp_op_cat_{i}")
+                            if operator in ["is", "is not"] and df[rule_col].nunique() < 50: # Use selectbox for low cardinality
+                                value = st.selectbox(f"Value for Rule {i+1}", df[rule_col].dropna().unique(), key=f"isp_val_cat_sel_{i}")
+                            else: # Use text input for high cardinality or contains/does not contain
+                                value = st.text_input(f"Value for Rule {i+1} (case-sensitive for 'contains')", key=f"isp_val_cat_txt_{i}")
+                            rules.append({'column': rule_col, 'operator': operator, 'value': value})
+                
+                if rules and st.button("Create and Profile Segment", key="isp_run_profile"):
+                    try:
+                        segment_mask = pd.Series(True, index=df.index)
+                        for rule in rules:
+                            col, op, val = rule['column'], rule['operator'], rule['value']
+                            if pd.api.types.is_numeric_dtype(df[col]):
+                                if op == ">": segment_mask &= (df[col] > val)
+                                elif op == ">=": segment_mask &= (df[col] >= val)
+                                elif op == "<": segment_mask &= (df[col] < val)
+                                elif op == "<=": segment_mask &= (df[col] <= val)
+                                elif op == "==": segment_mask &= (df[col] == val)
+                                elif op == "!=": segment_mask &= (df[col] != val)
+                            else: # Categorical/Object/Date (treat date as string for contains)
+                                if op == "is": segment_mask &= (df[col] == val)
+                                elif op == "is not": segment_mask &= (df[col] != val)
+                                elif op == "contains": segment_mask &= df[col].astype(str).str.contains(str(val), case=False, na=False)
+                                elif op == "does not contain": segment_mask &= ~df[col].astype(str).str.contains(str(val), case=False, na=False)
+                        
+                        segment_df = df[segment_mask]
+                        st.write(f"#### Segment Profile (Segment Size: {len(segment_df)} rows)")
+                        if not segment_df.empty:
+                            st.dataframe(segment_df.describe(include='all').T)
+                            st.write("Segment Data Preview (First 100 rows):")
+                            st.dataframe(segment_df.head(100))
+                        else:
+                            st.warning("The defined rules result in an empty segment.")
+                    except Exception as e:
+                        st.error(f"Error creating or profiling segment: {e}")
+            else:
+                st.info("Upload data to define segments.")
+
+        # NEW TOOL 3: Survival Analysis (Kaplan-Meier)
+        with st.expander("⏳ Survival Analysis (Kaplan-Meier)"):
+            st.subheader("Analyze Time-to-Event Data")
+            st.info("This tool performs survival analysis using the Kaplan-Meier estimator. You need a 'duration' column (time until event or censoring) and an 'event observed' column (binary: 1 if event occurred, 0 if censored).")
+
+            if numeric_cols and (categorical_cols or numeric_cols): # Need duration and event columns
+                duration_col_sa = st.selectbox("Select Duration Column (Numeric)", numeric_cols, key="sa_duration")
+                event_col_sa = st.selectbox("Select Event Observed Column (Binary: 0 or 1)", numeric_cols + categorical_cols, key="sa_event")
+                group_col_sa = st.selectbox("Optional: Select Grouping Column (Categorical)", [None] + categorical_cols, key="sa_group")
+
+                if duration_col_sa and event_col_sa:
+                    if st.button("Run Survival Analysis", key="run_sa"):
+                        try:
+                            sa_df_prep = df[[duration_col_sa, event_col_sa]].copy().dropna()
+                            # Ensure event column is binary 0/1
+                            if sa_df_prep[event_col_sa].nunique() == 2:
+                                unique_event_vals = sorted(sa_df_prep[event_col_sa].unique())
+                                sa_df_prep[event_col_sa] = sa_df_prep[event_col_sa].map({unique_event_vals[0]: 0, unique_event_vals[1]: 1})
+                            elif not sa_df_prep[event_col_sa].isin([0,1]).all():
+                                st.error(f"Event column '{event_col_sa}' must be binary (0 or 1, or two distinct values that can be mapped to 0/1).")
+                                st.stop()
+
+                            if sa_df_prep.empty:
+                                st.warning("No data available for survival analysis after filtering.")
+                            else:
+                                kmf = KaplanMeierFitter()
+                                fig_sa, ax_sa = plt.subplots()
+
+                                if group_col_sa and group_col_sa in df.columns:
+                                    sa_df_prep[group_col_sa] = df.loc[sa_df_prep.index, group_col_sa] # Add group column
+                                    for name, grouped_df in sa_df_prep.groupby(group_col_sa):
+                                        if not grouped_df.empty:
+                                            kmf.fit(grouped_df[duration_col_sa], event_observed=grouped_df[event_col_sa], label=str(name))
+                                            kmf.plot_survival_function(ax=ax_sa)
+                                    ax_sa.set_title(f"Kaplan-Meier Survival Curves by '{group_col_sa}'")
+                                else:
+                                    kmf.fit(sa_df_prep[duration_col_sa], event_observed=sa_df_prep[event_col_sa])
+                                    kmf.plot_survival_function(ax=ax_sa)
+                                    ax_sa.set_title("Kaplan-Meier Survival Curve")
+                                
+                                ax_sa.set_xlabel("Time (Duration)")
+                                ax_sa.set_ylabel("Survival Probability")
+                                plt.tight_layout()
+                                st.pyplot(fig_sa)
+
+                                st.write("Median Survival Time(s):")
+                                if group_col_sa and group_col_sa in df.columns:
+                                    median_survival_times = sa_df_prep.groupby(group_col_sa).apply(
+                                        lambda x: KaplanMeierFitter().fit(x[duration_col_sa], event_observed=x[event_col_sa]).median_survival_time_
+                                    )
+                                    st.dataframe(median_survival_times.rename("Median Survival Time"))
+                                else:
+                                    st.metric("Overall Median Survival Time", f"{kmf.median_survival_time_:.2f}" if pd.notna(kmf.median_survival_time_) else "Not Reached")
+
+                        except ImportError:
+                            st.error("The 'lifelines' library is required for Survival Analysis. Please install it (`pip install lifelines`).")
+                        except Exception as e:
+                            st.error(f"Error during Survival Analysis: {e}")
+                else:
+                    st.info("Select Duration and Event Observed columns.")
+            else:
+                st.info("Survival Analysis requires numeric columns for duration and a binary column for event observation.")
+
+        # NEW TOOL 4: AI-Powered Chart-to-Text Summarizer (Gemini)
+        with st.expander("🤖 AI Chart-to-Text Summarizer (Gemini)"):
+            st.subheader("Get AI-Generated Summaries of Your Charts")
+            st.info("Select columns to generate a basic chart, then ask AI to summarize its insights.")
+            if gemini_api_key:
+                if numeric_cols or categorical_cols:
+                    chart_type_ai = st.selectbox("Chart Type for AI Summary", ["Bar Chart (Categorical vs Numeric)", "Scatter Plot (Numeric vs Numeric)"], key="ai_chart_type")
+                    
+                    fig_for_ai = None
+                    chart_description_for_ai = ""
+
+                    if chart_type_ai == "Bar Chart (Categorical vs Numeric)" and categorical_cols and numeric_cols:
+                        cat_col_ai = st.selectbox("Select Categorical Column for Bar Chart", categorical_cols, key="ai_bar_cat")
+                        num_col_ai = st.selectbox("Select Numeric Column for Bar Chart", numeric_cols, key="ai_bar_num")
+                        agg_func_ai = st.selectbox("Aggregation for Bar Chart", ["mean", "sum", "count"], key="ai_bar_agg")
+                        if cat_col_ai and num_col_ai:
+                            bar_data = df.groupby(cat_col_ai)[num_col_ai].agg(agg_func_ai).reset_index()
+                            fig_for_ai = px.bar(bar_data, x=cat_col_ai, y=num_col_ai, title=f"{agg_func_ai.capitalize()} of {num_col_ai} by {cat_col_ai}")
+                            st.plotly_chart(fig_for_ai, use_container_width=True)
+                            chart_description_for_ai = f"This is a bar chart showing the {agg_func_ai} of '{num_col_ai}' for each category in '{cat_col_ai}'. The x-axis is '{cat_col_ai}' and the y-axis is '{num_col_ai}'. Data: {bar_data.head().to_string()}"
+
+                    elif chart_type_ai == "Scatter Plot (Numeric vs Numeric)" and len(numeric_cols) >= 2:
+                        x_col_ai = st.selectbox("Select X-axis for Scatter Plot", numeric_cols, key="ai_scatter_x")
+                        y_col_ai_options = [col for col in numeric_cols if col != x_col_ai]
+                        if y_col_ai_options:
+                            y_col_ai = st.selectbox("Select Y-axis for Scatter Plot", y_col_ai_options, key="ai_scatter_y")
+                            if x_col_ai and y_col_ai:
+                                fig_for_ai = px.scatter(df, x=x_col_ai, y=y_col_ai, title=f"Scatter Plot: {y_col_ai} vs {x_col_ai}")
+                                st.plotly_chart(fig_for_ai, use_container_width=True)
+                                chart_description_for_ai = f"This is a scatter plot showing the relationship between '{x_col_ai}' (x-axis) and '{y_col_ai}' (y-axis). Each point represents a data record. Sample data points for x: {df[x_col_ai].dropna().head().tolist()}, for y: {df[y_col_ai].dropna().head().tolist()}"
+                        else:
+                            st.warning("Need at least two distinct numeric columns for a scatter plot.")
+
+                    if fig_for_ai and chart_description_for_ai:
+                        if st.button("✍️ Generate AI Summary for this Chart", key="ai_summarize_chart"):
+                            with st.spinner("AI is analyzing the chart..."):
+                                prompt_chart_summary = f"Analyze the following chart and its underlying data. Provide a concise summary of the key insights, trends, or patterns visible. Chart Description: {chart_description_for_ai}"
+                                try:
+                                    model_chart_summary = genai.GenerativeModel("gemini-2.0-flash")
+                                    response_chart_summary = model_chart_summary.generate_content(prompt_chart_summary)
+                                    st.markdown("#### AI Chart Summary:")
+                                    st.markdown(response_chart_summary.text)
+                                except Exception as e:
+                                    st.error(f"Gemini API Error for Chart Summary: {str(e)}")
+                else:
+                    st.info("This tool requires numeric or categorical columns to generate a chart for AI summary.")
+            else:
+                st.info("Enter your Gemini API key in the sidebar to enable AI-powered chart summaries.")
+
+        # NEW TOOL 5: Anomaly Explanation (Feature Contribution)
+        with st.expander("💡 Anomaly Explanation (Feature Comparison)"):
+            st.subheader("Understand Why a Data Point is Flagged as an Anomaly")
+            st.info("This tool helps explain anomalies detected by the 'Anomaly Detection Dashboard'. Select an anomaly and see how its feature values compare to typical values.")
+            if 'anomalies_detected_df' in st.session_state and not st.session_state.anomalies_detected_df.empty:
+                outlier_df_explain = st.session_state.anomalies_detected_df
+                st.write("Detected Anomalies (from Anomaly Detection Dashboard):")
+                st.dataframe(outlier_df_explain.head())
+
+                if not outlier_df_explain.empty:
+                    selected_anomaly_idx = st.selectbox("Select Anomaly Index to Explain", outlier_df_explain.index.tolist(), key="explain_anomaly_idx")
+                    if selected_anomaly_idx is not None:
+                        anomaly_data_point = df.loc[selected_anomaly_idx]
+                        st.write(f"#### Explaining Anomaly at Index: {selected_anomaly_idx}")
+                        st.dataframe(anomaly_data_point.to_frame().T)
+
+                        st.markdown("##### Feature Comparison:")
+                        explanation_found_ae = False
+                        for col in df.columns: # Iterate through all columns of the original df
+                            if col in anomaly_data_point and pd.notna(anomaly_data_point[col]):
+                                outlier_val = anomaly_data_point[col]
+                                non_anomaly_data = df.drop(outlier_df_explain.index, errors='ignore') # Data excluding all detected anomalies
+
+                                if pd.api.types.is_numeric_dtype(df[col]) and not non_anomaly_data[col].dropna().empty:
+                                    mean_val = non_anomaly_data[col].mean()
+                                    std_val = non_anomaly_data[col].std()
+                                    q05_val = non_anomaly_data[col].quantile(0.05)
+                                    q95_val = non_anomaly_data[col].quantile(0.95)
+
+                                    if std_val > 0: # Avoid division by zero for z-score like comparison
+                                        z_score_approx = (outlier_val - mean_val) / std_val
+                                        if abs(z_score_approx) > 2.5:
+                                            st.write(f"- **{col}**: Value `{outlier_val:.2f}` is significantly different (approx. {z_score_approx:.1f} std devs) from the typical mean (`{mean_val:.2f}`).")
+                                            explanation_found_ae = True
+                                        elif outlier_val > q95_val :
+                                            st.write(f"- **{col}**: Value `{outlier_val:.2f}` is in the top 5% (above `{q95_val:.2f}`). Typical mean: `{mean_val:.2f}`.")
+                                            explanation_found_ae = True
+                                        elif outlier_val < q05_val:
+                                            st.write(f"- **{col}**: Value `{outlier_val:.2f}` is in the bottom 5% (below `{q05_val:.2f}`). Typical mean: `{mean_val:.2f}`.")
+                                            explanation_found_ae = True
+                                elif df[col].dtype == 'object' and not non_anomaly_data[col].dropna().empty:
+                                    mode_val = non_anomaly_data[col].mode()
+                                    if not mode_val.empty and outlier_val != mode_val[0]:
+                                        value_freq = non_anomaly_data[col].value_counts(normalize=True)
+                                        if outlier_val in value_freq and value_freq[outlier_val] < 0.05: # If category is rare
+                                            st.write(f"- **{col}**: Category `'{outlier_val}'` is uncommon (occurs <5% in non-anomalies). Most common is `'{mode_val[0]}'`. ")
+                                            explanation_found_ae = True
+                        if not explanation_found_ae:
+                            st.info("This anomaly does not show extreme deviations on individual features compared to the rest of the data based on simple statistical checks. It might be an outlier due to a combination of factors.")
+            else:
+                st.info("Run the 'Anomaly Detection Dashboard' first to identify outliers that can be explained here.")
+
         # NEW FEATURE 29: Custom Theme Builder
         with st.expander("🖌️ Custom Theme Designer"):
             st.subheader("Create Your Custom Theme")
@@ -2653,7 +2928,7 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
                 secondary_color = st.color_picker("Secondary Color", "#805AD5")  # Purple
                 text_color = st.color_picker("Text Color", "#E2E8F0")            # Light Gray
             with col2:
-                bg_color = st.color_picker("Background Color", "#1A202C")        # Very Dark Blue/Gray
+                bg_color_theme = st.color_picker("Background Color", "#1A202C", key="theme_bg_color") # Renamed to avoid conflict
                 accent_color = st.color_picker("Accent Color", "#ED8936")        # Orange
                 
             theme_name = st.text_input("Theme Name", "My Custom Theme")
@@ -2662,7 +2937,7 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
                 custom_css = f"""
                 <style>
                 .stApp {{
-                    background-color: {bg_color};
+                    background-color: {bg_color_theme};
                     color: {text_color};
                 }}
                 .metric-card {{
@@ -2676,7 +2951,7 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
                 }}
                 .stButton > button {{
                     background-color: {accent_color};
-                    color: {bg_color}; /* Text color for button, ensure contrast */
+                    color: {bg_color_theme}; /* Text color for button, ensure contrast */
                     border: 1px solid {accent_color};
                 }}
                 div[data-testid="stExpander"] > div:first-child summary {{
@@ -2693,7 +2968,7 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
                     "primary": primary_color,
                     "secondary": secondary_color,
                     "text": text_color,
-                    "background": bg_color,
+                    "background": bg_color_theme,
                     "accent": accent_color
                 }
                 st.download_button("Download Theme", 
@@ -2738,4 +3013,3 @@ with st.sidebar:
 
 
 st.image("d4.jpg", caption="Data Analysis meets AI meets Elegance.", use_container_width=True)
-
