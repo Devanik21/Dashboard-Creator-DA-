@@ -2348,62 +2348,6 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
             else:
                 st.info("Enter your Gemini API key in the sidebar to enable AI-generated narrative reports.")
 
-        # NEW FEATURE 33 (was 27): Interactive Outlier Explanation
-        with st.expander("🕵️ Interactive Outlier Explanation"):
-            st.subheader("Understand Why a Data Point is an Outlier")
-            if 'anomalies_detected_df' in st.session_state and not st.session_state.anomalies_detected_df.empty: # Check if anomalies were detected
-                outlier_df = st.session_state.anomalies_detected_df
-                st.write("Previously detected outliers (from Anomaly Detection Dashboard):")
-                st.dataframe(outlier_df.head())
-
-                if not outlier_df.empty:
-                    selected_outlier_index = st.selectbox("Select an Outlier Index to Explain", outlier_df.index.tolist(), key="select_outlier_explain")
-                    if selected_outlier_index is not None:
-                        outlier_data_point = df.loc[selected_outlier_index]
-                        st.write(f"#### Explaining Outlier at Index: {selected_outlier_index}")
-                        st.write(outlier_data_point)
-                        
-                        # Placeholder for explanation logic (could use SHAP/LIME if a model was involved, or simple feature comparison)
-                        st.markdown("#### Potential Reasons for Being an Outlier:")
-                        explanations_found = False
-
-                        # Numeric Feature Analysis
-                        for col in numeric_cols:
-                            if col in outlier_data_point and pd.notna(outlier_data_point[col]):
-                                col_mean = df[col].mean()
-                                col_std = df[col].std()
-                                col_q05 = df[col].quantile(0.05)
-                                col_q95 = df[col].quantile(0.95)
-                                outlier_val = outlier_data_point[col]
-
-                                if outlier_val > col_mean + 2.5 * col_std:
-                                    st.write(f"- **{col}**: Value `{outlier_val:.2f}` is significantly **higher** than the average (`{col_mean:.2f}`). It's more than 2.5 standard deviations above the mean.")
-                                    explanations_found = True
-                                elif outlier_val < col_mean - 2.5 * col_std:
-                                    st.write(f"- **{col}**: Value `{outlier_val:.2f}` is significantly **lower** than the average (`{col_mean:.2f}`). It's more than 2.5 standard deviations below the mean.")
-                                    explanations_found = True
-                                
-                                if outlier_val > col_q95 and not (outlier_val > col_mean + 2.5 * col_std): # Avoid redundant message if already caught by std dev
-                                    st.write(f"- **{col}**: Value `{outlier_val:.2f}` is in the **top 5%** of values for this column (above `{col_q95:.2f}`).")
-                                    explanations_found = True
-                                elif outlier_val < col_q05 and not (outlier_val < col_mean - 2.5 * col_std): # Avoid redundant message
-                                    st.write(f"- **{col}**: Value `{outlier_val:.2f}` is in the **bottom 5%** of values for this column (below `{col_q05:.2f}`).")
-                                    explanations_found = True
-
-                        # Categorical Feature Analysis
-                        for col in categorical_cols:
-                            if col in outlier_data_point and pd.notna(outlier_data_point[col]):
-                                outlier_cat_val = outlier_data_point[col]
-                                cat_freq = df[col].value_counts(normalize=True)
-                                if outlier_cat_val in cat_freq and cat_freq[outlier_cat_val] < 0.05: # If category occurs less than 5% of the time
-                                    st.write(f"- **{col}**: The category `'{outlier_cat_val}'` is relatively **rare** for this feature, occurring in less than 5% of records.")
-                                    explanations_found = True
-                        
-                        if not explanations_found:
-                            st.info("No obvious univariate reasons found based on simple statistical checks. The outlier might be due to a combination of factors or a more subtle pattern not captured by these checks.")
-            else:
-                st.info("Run the 'Anomaly Detection Dashboard' first to identify outliers that can be explained.")
-
         # NEW FEATURE 34: Automated Data Cleaning Suggestions
         with st.expander("🧹 Automated Data Cleaning Suggestions"):
             st.subheader("Get Smart Suggestions for Data Cleaning")
