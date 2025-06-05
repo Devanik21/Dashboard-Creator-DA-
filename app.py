@@ -43,6 +43,7 @@ from statsmodels.tsa.stattools import ccf # For Time-Lagged Cross-Correlation
 from lifelines import KaplanMeierFitter # For Survival Analysis
 from sklearn.preprocessing import LabelEncoder # For Decision Tree target encoding
 from nltk.sentiment.vader import SentimentIntensityAnalyzer # For Sentiment Analysis
+from lifelines import CoxPHFitter # For Survival Regression
 # New imports for added tools
 from scipy.cluster.hierarchy import dendrogram, linkage # For Hierarchical Clustering
 from sklearn.feature_extraction.text import CountVectorizer # For LDA
@@ -2870,6 +2871,252 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
                             st.info("This anomaly does not show extreme deviations on individual features compared to the rest of the data based on simple statistical checks. It might be an outlier due to a combination of factors.")
             else:
                 st.info("Run the 'Anomaly Detection Dashboard' first to identify outliers that can be explained here.")
+
+        # --- ADVANCED TOOL 1: Hierarchical Clustering & Dendrogram Visualization ---
+        with st.expander("🔗 ADVANCED TOOL 1: Hierarchical Clustering & Dendrogram Visualization"):
+            st.subheader("Explore Data Structure with Hierarchical Clustering")
+            st.info("Perform hierarchical clustering on selected numeric features. Visualize relationships with a dendrogram and define clusters by cutting the tree.")
+            if len(numeric_cols) >= 2:
+                hc_features = st.multiselect(
+                    "Select Numeric Features for Hierarchical Clustering",
+                    numeric_cols,
+                    default=numeric_cols[:min(3, len(numeric_cols))],
+                    key="hc_features_select"
+                )
+                hc_linkage_method = st.selectbox(
+                    "Linkage Method",
+                    ['ward', 'complete', 'average', 'single'],
+                    key="hc_linkage"
+                )
+                hc_metric = st.selectbox(
+                    "Distance Metric",
+                    ['euclidean', 'cityblock', 'cosine', 'correlation'], # Common metrics
+                    key="hc_metric"
+                )
+
+                if len(hc_features) >= 2:
+                    if st.button("Run Hierarchical Clustering", key="run_hc"):
+                        hc_data = df[hc_features].copy().dropna()
+                        if hc_data.empty or len(hc_data) < 2:
+                            st.warning("Not enough data after dropping NaNs for selected features.")
+                        else:
+                            try:
+                                # Standardize data
+                                scaler_hc = StandardScaler()
+                                scaled_hc_data = scaler_hc.fit_transform(hc_data)
+
+                                # Perform hierarchical clustering
+                                linked = linkage(scaled_hc_data, method=hc_linkage_method, metric=hc_metric)
+
+                                st.write("#### Dendrogram")
+                                fig_dendro, ax_dendro = plt.subplots(figsize=(12, 7))
+                                dendrogram(linked,
+                                           orientation='top',
+                                           distance_sort='descending',
+                                           show_leaf_counts=True,
+                                           ax=ax_dendro,
+                                           truncate_mode='lastp', # Show last p merged clusters
+                                           p=30, # Number of merged clusters to show
+                                           leaf_rotation=90.,
+                                           leaf_font_size=8.)
+                                ax_dendro.set_title(f"Hierarchical Clustering Dendrogram ({hc_linkage_method} linkage, {hc_metric} metric)")
+                                ax_dendro.set_xlabel("Sample index or (cluster size)")
+                                ax_dendro.set_ylabel("Distance")
+                                plt.tight_layout()
+                                st.pyplot(fig_dendro)
+
+                                # Option to cut the tree for clusters
+                                num_clusters_hc = st.slider("Number of Clusters to Form (by cutting dendrogram)", 2, 15, 3, key="hc_num_clusters_cut")
+                                from scipy.cluster.hierarchy import fcluster
+                                clusters_hc = fcluster(linked, num_clusters_hc, criterion='maxclust')
+                                
+                                hc_data_with_clusters = hc_data.copy()
+                                hc_data_with_clusters['HC_Cluster'] = clusters_hc
+                                
+                                # Add to main df if desired
+                                if st.checkbox("Add Hierarchical Clusters to main DataFrame?", key="hc_add_to_df"):
+                                    df.loc[hc_data.index, 'HC_Cluster'] = clusters_hc
+                                    st.success("'HC_Cluster' column added. Rerun other analyses if needed.")
+                                    st.rerun()
+
+                                st.write("#### Cluster Profiles (Mean Values)")
+                                st.dataframe(hc_data_with_clusters.groupby('HC_Cluster')[hc_features].mean())
+                                st.write("#### Cluster Sizes")
+                                st.dataframe(hc_data_with_clusters['HC_Cluster'].value_counts().sort_index().rename("Size"))
+
+                            except Exception as e:
+                                st.error(f"Error during Hierarchical Clustering: {e}")
+                else:
+                    st.warning("Select at least two numeric features for Hierarchical Clustering.")
+            else:
+                st.info("Hierarchical Clustering requires at least two numeric columns.")
+
+        # --- ADVANCED TOOL 2: Latent Dirichlet Allocation (LDA) for Topic Modeling ---
+        with st.expander("📜 ADVANCED TOOL 2: Latent Dirichlet Allocation (LDA) for Topic Modeling"):
+            st.subheader("Discover Hidden Topics in Text Data")
+            st.info("Apply LDA to a text column to identify underlying topics. Each topic is represented by a set of characteristic words.")
+            text_cols_lda = df.select_dtypes(include='object').columns.tolist()
+            if text_cols_lda:
+                lda_text_col = st.selectbox("Select Text Column for LDA", text_cols_lda, key="lda_text_col")
+                lda_num_topics = st.slider("Number of Topics", 2, 20, 5, key="lda_num_topics")
+                lda_max_features = st.number_input("Max Features for Vectorizer (vocabulary size)", 100, 5000, 1000, key="lda_max_features")
+                lda_top_n_words = st.number_input("Top N Words per Topic to Display", 5, 20, 10, key="lda_top_n_words")
+
+                if lda_text_col:
+                    if st.button("Run LDA Topic Modeling", key="run_lda"):
+                        lda_data = df[lda_text_col].astype(str).dropna()
+                        if lda_data.empty or len(lda_data) < lda_num_topics:
+                            st.warning("Not enough text data or fewer documents than topics.")
+                        else:
+                            try:
+                                # Create Document-Term Matrix
+                                vectorizer = CountVectorizer(max_df=0.95, min_df=2, max_features=lda_max_features, stop_words='english')
+                                dtm = vectorizer.fit_transform(lda_data)
+                                feature_names_lda = vectorizer.get_feature_names_out()
+
+                                # Fit LDA model
+                                lda_model = LatentDirichletAllocation(n_components=lda_num_topics, random_state=42, learning_method='online')
+                                lda_model.fit(dtm)
+
+                                st.write("#### Top Words per Topic:")
+                                topics_display = {}
+                                for topic_idx, topic in enumerate(lda_model.components_):
+                                    top_words_indices = topic.argsort()[:-lda_top_n_words - 1:-1]
+                                    top_words = [feature_names_lda[i] for i in top_words_indices]
+                                    topics_display[f"Topic {topic_idx+1}"] = ", ".join(top_words)
+                                st.json(topics_display)
+
+                                # Optional: Document-topic distribution (can be large)
+                                if st.checkbox("Show Document-Topic Distribution (sample)?", key="lda_show_doc_topic"):
+                                    doc_topic_dist = lda_model.transform(dtm)
+                                    doc_topic_df = pd.DataFrame(doc_topic_dist, columns=[f"Topic {i+1}" for i in range(lda_num_topics)])
+                                    st.write("Document-Topic Distribution (First 100 rows):")
+                                    st.dataframe(doc_topic_df.head(100))
+
+                            except Exception as e:
+                                st.error(f"Error during LDA Topic Modeling: {e}")
+            else:
+                st.info("LDA Topic Modeling requires a text (object/string type) column.")
+
+        # --- ADVANCED TOOL 3: Model Interpretability with PDP/ICE Plots ---
+        with st.expander("🔍 ADVANCED TOOL 3: Model Interpretability (PDP/ICE Plots)"):
+            st.subheader("Understand Model Predictions with Partial Dependence and ICE Plots")
+            st.info("Visualize how feature values affect model predictions. A simple Random Forest model will be trained for demonstration.")
+            if len(numeric_cols) >= 1 and (len(categorical_cols) >=1 or len(numeric_cols) >=2) : # Need target and at least one feature
+                pdp_target_col = st.selectbox("Select Target Variable for Model", numeric_cols + categorical_cols, key="pdp_target")
+                
+                pdp_feature_options = [col for col in numeric_cols + categorical_cols if col != pdp_target_col]
+                pdp_model_features = st.multiselect("Select Features for Model Training", pdp_feature_options, default=pdp_feature_options[:min(3, len(pdp_feature_options))], key="pdp_model_features")
+
+                if pdp_target_col and pdp_model_features:
+                    pdp_plot_features = st.multiselect("Select Features for PDP/ICE Plots (subset of trained features)", pdp_model_features, default=pdp_model_features[:min(2, len(pdp_model_features))], key="pdp_plot_features")
+
+                    if st.button("Train Model & Generate PDP/ICE Plots", key="run_pdp_ice"):
+                        try:
+                            pdp_df_prep = df[[pdp_target_col] + pdp_model_features].copy().dropna()
+                            
+                            # Preprocessing
+                            y_pdp = pdp_df_prep[pdp_target_col]
+                            X_pdp = pdp_df_prep[pdp_model_features]
+                            
+                            is_classification_pdp = False
+                            if y_pdp.dtype == 'object' or y_pdp.nunique() <= 10: # Heuristic for classification
+                                is_classification_pdp = True
+                                le_pdp = LabelEncoder()
+                                y_pdp = le_pdp.fit_transform(y_pdp)
+                                pdp_model = RandomForestClassifier(random_state=42, n_estimators=50)
+                            else:
+                                pdp_model = RandomForestRegressor(random_state=42, n_estimators=50)
+
+                            X_pdp_processed = pd.get_dummies(X_pdp, drop_first=True)
+                            pdp_model.fit(X_pdp_processed, y_pdp)
+                            st.success(f"Model ({'Classifier' if is_classification_pdp else 'Regressor'}) trained successfully.")
+
+                            if pdp_plot_features:
+                                st.write("#### Partial Dependence Plots (PDP) & Individual Conditional Expectation (ICE) Plots")
+                                for feature_to_plot in pdp_plot_features:
+                                    if feature_to_plot in X_pdp_processed.columns: # Ensure feature is in processed columns
+                                        st.markdown(f"##### Plots for Feature: {feature_to_plot}")
+                                        fig_pdp_ice, ax_pdp_ice = plt.subplots(figsize=(10, 6))
+                                        display = PartialDependenceDisplay.from_estimator(
+                                            pdp_model,
+                                            X_pdp_processed,
+                                            features=[feature_to_plot],
+                                            kind='both', # Show PDP and ICE
+                                            ice_lines_kw={"color": "tab:blue", "alpha": 0.2, "linewidth": 0.5},
+                                            pd_line_kw={"color": "tab:orange", "linestyle": "--", "linewidth": 2},
+                                            ax=ax_pdp_ice
+                                        )
+                                        ax_pdp_ice.set_title(f"PDP and ICE for {feature_to_plot}")
+                                        st.pyplot(fig_pdp_ice)
+                                    else:
+                                        st.warning(f"Feature '{feature_to_plot}' not found in processed data (possibly removed during one-hot encoding or was part of a dropped category).")
+                            else:
+                                st.info("Select features to plot for PDP/ICE.")
+                        except Exception as e:
+                            st.error(f"Error during PDP/ICE generation: {e}")
+                else:
+                    st.info("Select a target variable and features for model training.")
+            else:
+                st.info("PDP/ICE plots require numeric and/or categorical columns for target and features.")
+
+        # --- ADVANCED TOOL 4: Survival Regression with Cox Proportional Hazards Model ---
+        with st.expander("📈 ADVANCED TOOL 4: Survival Regression (Cox PH Model)"):
+            st.subheader("Model Time-to-Event Data with Covariates")
+            st.info("Use the Cox Proportional Hazards model to understand how different features affect survival time. Requires duration, event observed, and covariate columns.")
+            if numeric_cols and (categorical_cols or len(numeric_cols) >=2): # Need duration, event, and at least one covariate
+                cox_duration_col = st.selectbox("Select Duration Column (Numeric)", numeric_cols, key="cox_duration")
+                cox_event_col = st.selectbox("Select Event Observed Column (Binary: 0 or 1)", numeric_cols + categorical_cols, key="cox_event")
+                
+                cox_covariate_options = [col for col in numeric_cols + categorical_cols if col not in [cox_duration_col, cox_event_col]]
+                cox_covariates = st.multiselect("Select Covariate Columns", cox_covariate_options, default=cox_covariate_options[:min(2, len(cox_covariate_options))], key="cox_covariates")
+
+                if cox_duration_col and cox_event_col and cox_covariates:
+                    if st.button("Run Cox Proportional Hazards Model", key="run_cox_ph"):
+                        try:
+                            cox_df_prep = df[[cox_duration_col, cox_event_col] + cox_covariates].copy().dropna()
+                            
+                            # Ensure event column is binary 0/1
+                            if cox_df_prep[cox_event_col].nunique() == 2:
+                                unique_event_vals_cox = sorted(cox_df_prep[cox_event_col].unique())
+                                if len(unique_event_vals_cox) == 2: # Check again after potential dropna
+                                    cox_df_prep[cox_event_col] = cox_df_prep[cox_event_col].map({unique_event_vals_cox[0]: 0, unique_event_vals_cox[1]: 1})
+                            elif not cox_df_prep[cox_event_col].isin([0,1]).all():
+                                st.error(f"Event column '{cox_event_col}' must be binary (0 or 1) or have two distinct values.")
+                                st.stop()
+
+                            if cox_df_prep.empty or len(cox_df_prep) < 10: # Need some data
+                                st.warning("Not enough data for Cox PH model after filtering.")
+                            else:
+                                # One-hot encode categorical covariates
+                                cox_df_processed = pd.get_dummies(cox_df_prep, columns=[col for col in cox_covariates if df[col].dtype=='object'], drop_first=True)
+                                
+                                cph = CoxPHFitter()
+                                cph.fit(cox_df_processed, duration_col=cox_duration_col, event_col=cox_event_col)
+
+                                st.write("#### Cox PH Model Summary:")
+                                st.dataframe(cph.summary)
+
+                                st.write("#### Hazard Ratios (exp(coef)):")
+                                st.dataframe(np.exp(cph.params_).rename("Hazard Ratio (HR)"))
+                                st.caption("HR > 1: Increased hazard (shorter survival) for a unit increase in covariate.")
+                                st.caption("HR < 1: Decreased hazard (longer survival) for a unit increase in covariate.")
+
+                                if len(cox_df_processed.columns) -2 <= 10: # Limit plotting if too many covariates
+                                    st.write("#### Coefficient Plot:")
+                                    fig_cph_coeffs, ax_cph_coeffs = plt.subplots(figsize=(8, max(4, len(cph.params_)*0.5)))
+                                    cph.plot(ax=ax_cph_coeffs)
+                                    plt.tight_layout()
+                                    st.pyplot(fig_cph_coeffs)
+
+                        except ImportError:
+                            st.error("The 'lifelines' library is required for Cox PH Model. Please install it (`pip install lifelines`).")
+                        except Exception as e:
+                            st.error(f"Error during Cox PH Model: {e}")
+                else:
+                    st.info("Select Duration, Event Observed, and at least one Covariate column.")
+            else:
+                st.info("Cox PH Model requires numeric columns for duration, a binary event column, and covariate columns (numeric or categorical).")
 
         # NEW FEATURE 29: Custom Theme Builder
         with st.expander("🖌️ Custom Theme Designer"):
