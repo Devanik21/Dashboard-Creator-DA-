@@ -3385,20 +3385,26 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
                                 if kda_model_type == "Random Forest":
                                     model_kda = RandomForestClassifier(random_state=42, n_estimators=100) if is_classification_kda else RandomForestRegressor(random_state=42, n_estimators=100)
                                     model_kda.fit(X_kda_imputed_df, y_kda_encoded)
-                                    importances = model_kda.feature_importances_
-                                    drivers_df = pd.DataFrame({'Feature': X_kda_imputed_df.columns, 'Importance': importances}).sort_values('Importance', ascending=False)
-                                    metric_name = "Feature Importance"
+                                    importances_kda = model_kda.feature_importances_
+                                    drivers_df = pd.DataFrame({'Feature': X_kda_imputed_df.columns, 'Importance': importances_kda}).sort_values('Importance', ascending=False)
+                                    metric_name_for_label = "Feature Importance"
+                                    x_axis_col_name = 'Importance'
                                 else: # Linear/Logistic Regression
                                     model_kda = LogisticRegression(solver='liblinear', random_state=42) if is_classification_kda else LinearRegression()
                                     model_kda.fit(X_kda_imputed_df, y_kda_encoded)
-                                    coefficients = model_kda.coef_[0] if is_classification_kda else model_kda.coef_ # LR coef_ is 2D for multi-class, take first for binary
-                                    drivers_df = pd.DataFrame({'Feature': X_kda_imputed_df.columns, 'Coefficient_Abs': np.abs(coefficients), 'Coefficient': coefficients}).sort_values('Coefficient_Abs', ascending=False)
-                                    metric_name = "Absolute Coefficient"
+                                    # Handle coefficient shapes for binary/multiclass classification and regression
+                                    if is_classification_kda:
+                                        coefficients_kda = model_kda.coef_[0] if model_kda.coef_.ndim == 2 and model_kda.coef_.shape[0] == 1 else model_kda.coef_.ravel()
+                                    else: # Regression
+                                        coefficients_kda = model_kda.coef_
+                                    drivers_df = pd.DataFrame({'Feature': X_kda_imputed_df.columns, 'Coefficient_Abs': np.abs(coefficients_kda), 'Coefficient': coefficients_kda}).sort_values('Coefficient_Abs', ascending=False)
+                                    metric_name_for_label = "Absolute Coefficient"
+                                    x_axis_col_name = 'Coefficient_Abs'
 
                                 st.write(f"#### Key Drivers for '{kda_target_col}' (using {kda_model_type})")
                                 st.dataframe(drivers_df.head(15))
 
-                                fig_kda = px.bar(drivers_df.head(15), x=metric_name, y='Feature', orientation='h', title=f"Top Key Drivers by {metric_name}")
+                                fig_kda = px.bar(drivers_df.head(15), x=x_axis_col_name, y='Feature', orientation='h', title=f"Top Key Drivers by {metric_name_for_label}", labels={x_axis_col_name: metric_name_for_label})
                                 st.plotly_chart(fig_kda, use_container_width=True)
                         except Exception as e:
                             st.error(f"Error during Key Drivers Analysis: {e}")
