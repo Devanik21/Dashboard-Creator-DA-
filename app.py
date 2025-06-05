@@ -3371,13 +3371,44 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
                             X_kda_imputed = imputer_kda.fit_transform(X_kda_processed)
                             X_kda_imputed_df = pd.DataFrame(X_kda_imputed, columns=X_kda_processed.columns, index=X_kda_processed.index)
 
+                            # Align y_kda with X_kda_imputed_df's index and handle potential NaNs in y_kda
+                            y_aligned = y_kda.loc[X_kda_imputed_df.index]
+                            if y_aligned.isnull().any():
+                                st.warning(f"Target column '{kda_target_col}' has {y_aligned.isnull().sum()} missing values at indices corresponding to valid features. These rows will be dropped.")
+                                valid_indices_after_y_dropna = y_aligned.dropna().index
+                                y_aligned = y_aligned.loc[valid_indices_after_y_dropna]
+                                X_kda_imputed_df = X_kda_imputed_df.loc[valid_indices_after_y_dropna]
+
+                            if X_kda_imputed_df.empty or y_aligned.empty:
+                                st.error("No data remains after aligning features and target. Cannot proceed with Key Drivers Analysis.")
+                                st.stop()
+
+                            # Determine task type and encode target
                             is_classification_kda = False
-                            if y_kda.dtype == 'object' or y_kda.nunique() <= 10: # Heuristic
+                            if pd.api.types.is_numeric_dtype(y_aligned.dtype):
+                                if y_aligned.nunique() <= 10 and y_aligned.nunique() > 1: # Treat as classification if few unique numeric values
+                                    is_classification_kda = True
+                                    task_readable = "Classification (from Numeric Target)"
+                                elif y_aligned.nunique() == 1:
+                                    st.error(f"Target column '{kda_target_col}' has only one unique value. Cannot train model.")
+                                    st.stop()
+                                else: # Regression
+                                    is_classification_kda = False
+                                    task_readable = "Regression"
+                            else: # Object, categorical, boolean
                                 is_classification_kda = True
+                                task_readable = "Classification (from Categorical/Boolean Target)"
+
+                            st.info(f"Interpreting target '{kda_target_col}' for {task_readable}.")
+
+                            if is_classification_kda:
                                 le_kda = LabelEncoder()
-                                y_kda_encoded = le_kda.fit_transform(y_kda.loc[X_kda_imputed_df.index])
+                                y_kda_encoded = le_kda.fit_transform(y_aligned)
+                                if len(le_kda.classes_) <= 1:
+                                    st.error(f"Target column '{kda_target_col}' effectively has only one class after encoding. Cannot train model.")
+                                    st.stop()
                             else:
-                                y_kda_encoded = y_kda.loc[X_kda_imputed_df.index]
+                                y_kda_encoded = y_aligned # Already numeric for regression
 
                             if len(X_kda_imputed_df) < 10:
                                 st.warning("Not enough data for Key Drivers Analysis after filtering.")
@@ -3387,17 +3418,36 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
                                     model_kda.fit(X_kda_imputed_df, y_kda_encoded)
                                     importances_kda = model_kda.feature_importances_
                                     drivers_df = pd.DataFrame({'Feature': X_kda_imputed_df.columns, 'Importance': importances_kda}).sort_values('Importance', ascending=False)
-                                    metric_name_for_label = "Feature Importance"
-                                    x_axis_col_name = 'Importance'
                                 else: # Linear/Logistic Regression
-                                    model_kda = LogisticRegression(solver='liblinear', random_state=42) if is_classification_kda else LinearRegression()
+                                    model_kda = LogisticRegression(solver='liblinear', random_state=42, class_weight='balanced') if is_classification_kda else LinearRegression()
                                     model_kda.fit(X_kda_imputed_df, y_kda_encoded)
-                                    # Handle coefficient shapes for binary/multiclass classification and regression
+                                    
                                     if is_classification_kda:
-                                        coefficients_kda = model_kda.coef_[0] if model_kda.coef_.ndim == 2 and model_kda.coef_.shape[0] == 1 else model_kda.coef_.ravel()
+                                        if model_kda.coef_.ndim == 1: # Binary classification by some solvers or if only 1 class vs rest
+                                            coefficients_kda = model_kda.coef_
+                                        elif model_kda.coef_.shape[0] == 1: # Binary classification (standard case)
+                                            coefficients_kda = model_kda.coef_[0]
+                                        else: # Multiclass classification
+                                            # Use mean of absolute coefficients across classes for 'Coefficient_Abs'
+                                            # Use mean of coefficients for 'Coefficient' column (can be less interpretable for direction)
+                                            abs_coeffs_for_drivers = np.mean(np.abs(model_kda.coef_), axis=0)
+                                            mean_coeffs_for_drivers = np.mean(model_kda.coef_, axis=0)
+                                            drivers_df = pd.DataFrame({'Feature': X_kda_imputed_df.columns, 
+                                                                       'Coefficient_Abs': abs_coeffs_for_drivers, 
+                                                                       'Coefficient': mean_coeffs_for_drivers}
+                                                                     ).sort_values('Coefficient_Abs', ascending=False)
                                     else: # Regression
                                         coefficients_kda = model_kda.coef_
-                                    drivers_df = pd.DataFrame({'Feature': X_kda_imputed_df.columns, 'Coefficient_Abs': np.abs(coefficients_kda), 'Coefficient': coefficients_kda}).sort_values('Coefficient_Abs', ascending=False)
+                                        drivers_df = pd.DataFrame({'Feature': X_kda_imputed_df.columns, 
+                                                                   'Coefficient_Abs': np.abs(coefficients_kda), 
+                                                                   'Coefficient': coefficients_kda}
+                                                                 ).sort_values('Coefficient_Abs', ascending=False)
+                                
+                                # This block is for Random Forest or if drivers_df wasn't created for multiclass above
+                                if kda_model_type == "Random Forest": # Or if drivers_df not yet defined for some reason
+                                    metric_name_for_label = "Feature Importance"
+                                    x_axis_col_name = 'Importance'
+                                else: # Linear/Logistic
                                     metric_name_for_label = "Absolute Coefficient"
                                     x_axis_col_name = 'Coefficient_Abs'
 
