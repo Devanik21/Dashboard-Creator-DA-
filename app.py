@@ -2771,7 +2771,10 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
                             # Ensure event column is binary 0/1
                             if sa_df_prep[event_col_sa].nunique() == 2:
                                 unique_event_vals = sorted(sa_df_prep[event_col_sa].unique())
-                                sa_df_prep[event_col_sa] = sa_df_prep[event_col_sa].map({unique_event_vals[0]: 0, unique_event_vals[1]: 1})
+                                # Ensure there are two unique values before trying to map
+                                if len(unique_event_vals) == 2:
+                                    sa_df_prep[event_col_sa] = sa_df_prep[event_col_sa].map({unique_event_vals[0]: 0, unique_event_vals[1]: 1})
+                                # If nunique is 2 but unique_event_vals isn't (e.g. due to NaNs), this will be caught by the elif
                             elif not sa_df_prep[event_col_sa].isin([0,1]).all():
                                 st.error(f"Event column '{event_col_sa}' must be binary (0 or 1, or two distinct values that can be mapped to 0/1).")
                                 st.stop()
