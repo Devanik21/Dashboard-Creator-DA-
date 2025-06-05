@@ -2697,6 +2697,63 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
             else:
                 st.info("Comparative Product Performance requires categorical columns (for Product ID) and numeric columns (for metrics and profiling).")
 
+        # NEW FEATURE 29: Custom Theme Builder
+        with st.expander("🖌️ Custom Theme Designer"):
+            st.subheader("Create Your Custom Theme")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                primary_color = st.color_picker("Primary Color", "#38B2AC")      # Teal
+                secondary_color = st.color_picker("Secondary Color", "#805AD5")  # Purple
+                text_color = st.color_picker("Text Color", "#E2E8F0")            # Light Gray
+            with col2:
+                bg_color = st.color_picker("Background Color", "#1A202C")        # Very Dark Blue/Gray
+                accent_color = st.color_picker("Accent Color", "#ED8936")        # Orange
+                
+            theme_name = st.text_input("Theme Name", "My Custom Theme")
+
+            if st.button("Apply Custom Theme"):
+                custom_css = f"""
+                <style>
+                .stApp {{
+                    background-color: {bg_color};
+                    color: {text_color};
+                }}
+                .metric-card {{
+                    background: linear-gradient(135deg, {primary_color} 0%, {secondary_color} 100%);
+                    color: {text_color}; /* Ensure text color contrasts with new gradient */
+                }}
+                .insight-box {{
+                    background: #2D3748; /* Or a slightly lighter shade of bg_color */
+                    border-left-color: {accent_color};
+                    color: {text_color};
+                }}
+                .stButton > button {{
+                    background-color: {accent_color};
+                    color: {bg_color}; /* Text color for button, ensure contrast */
+                    border: 1px solid {accent_color};
+                }}
+                div[data-testid="stExpander"] > div:first-child summary {{
+                    color: {text_color};
+                }}
+                </style>
+                """
+                st.markdown(custom_css, unsafe_allow_html=True)
+                st.success(f"Applied theme: {theme_name}")
+                
+                # Save theme
+                theme_config = {
+                    "name": theme_name,
+                    "primary": primary_color,
+                    "secondary": secondary_color,
+                    "text": text_color,
+                    "background": bg_color,
+                    "accent": accent_color
+                }
+                st.download_button("Download Theme", 
+                                 json.dumps(theme_config, indent=2),
+                                 f"{theme_name.lower().replace(' ', '_')}_theme.json")
+
         # Auto-refresh functionality
         if refresh_interval > 0:
             time.sleep(refresh_interval)
