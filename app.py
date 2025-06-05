@@ -596,35 +596,67 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
         with st.expander("🚨 Anomaly Detection Dashboard"):
             if numeric_cols:
                 st.subheader("Interactive Outlier Detection")
-                anomaly_col = st.selectbox("Select Column for Anomaly Detection", numeric_cols)
-                method = st.selectbox("Detection Method", ["IQR", "Z-Score", "Isolation Forest"])
+                anomaly_col = st.selectbox("Select Column for Anomaly Detection", numeric_cols, key="f11_anomaly_col_selector")
+                method = st.selectbox("Detection Method", ["IQR", "Z-Score", "Isolation Forest"], key="f11_method_selector")
                 
+                anomalies_mask = pd.Series(False, index=df.index) # Initialize a boolean mask aligned with the DataFrame
+
                 if method == "IQR":
-                    Q1, Q3 = df[anomaly_col].quantile([0.25, 0.75])
-                    IQR = Q3 - Q1
-                    lower_bound = Q1 - 1.5 * IQR
-                    upper_bound = Q3 + 1.5 * IQR
-                    anomalies = (df[anomaly_col] < lower_bound) | (df[anomaly_col] > upper_bound)
-                elif method == "Z-Score":
-                    z_scores = np.abs((df[anomaly_col] - df[anomaly_col].mean()) / df[anomaly_col].std())
-                    anomalies = z_scores > 3
-                else:  # Isolation Forest
-                    iso_forest = IsolationForest(contamination=0.1, random_state=42)
-                    anomalies = iso_forest.fit_predict(df[[anomaly_col]].dropna()) == -1
+                    if pd.api.types.is_numeric_dtype(df[anomaly_col]) and not df[anomaly_col].isnull().all():
+                        Q1, Q3 = df[anomaly_col].quantile([0.25, 0.75])
+                        IQR_value = Q3 - Q1 # Renamed to avoid conflict if a module named IQR is imported
+                        lower_bound = Q1 - 1.5 * IQR_value
+                        upper_bound = Q3 + 1.5 * IQR_value
+                        anomalies_mask = (df[anomaly_col] < lower_bound) | (df[anomaly_col] > upper_bound)
+                    else:
+                        st.warning(f"Column '{anomaly_col}' is not suitable for IQR method (e.g., not numeric or all NaN).")
                 
-                anomaly_count = anomalies.sum() if hasattr(anomalies, 'sum') else len([x for x in anomalies if x])
+                elif method == "Z-Score":
+                    if pd.api.types.is_numeric_dtype(df[anomaly_col]) and not df[anomaly_col].isnull().all() and df[anomaly_col].std() != 0:
+                        z_scores = np.abs((df[anomaly_col] - df[anomaly_col].mean()) / df[anomaly_col].std())
+                        anomalies_mask = z_scores > 3
+                    else:
+                        st.warning(f"Column '{anomaly_col}' is not suitable for Z-Score method (e.g., not numeric, all NaN, or zero standard deviation).")
+                
+                else:  # Isolation Forest
+                    data_for_iso = df[[anomaly_col]].dropna()
+                    if not data_for_iso.empty and len(data_for_iso) > 1: # Isolation Forest needs at least 2 samples
+                        contamination_iso = st.slider("Isolation Forest Contamination", 0.01, 0.5, 0.1, 0.01, key="iso_contamination_f11")
+                        iso_forest = IsolationForest(contamination=contamination_iso, random_state=42)
+                        predictions = iso_forest.fit_predict(data_for_iso) # numpy array of -1s (outlier) and 1s (inlier)
+                        
+                        # Create a boolean Series on data_for_iso's index indicating anomalies
+                        is_anomaly_on_subset = pd.Series(predictions == -1, index=data_for_iso.index)
+                        
+                        # Update the main anomalies_mask for the original DataFrame
+                        anomalies_mask.loc[is_anomaly_on_subset[is_anomaly_on_subset].index] = True
+                    elif not data_for_iso.empty and len(data_for_iso) <=1 :
+                        st.warning(f"Not enough data points ({len(data_for_iso)}) in '{anomaly_col}' after dropping NaNs for Isolation Forest. Need at least 2.")
+                    else:
+                        st.warning(f"Column '{anomaly_col}' is empty after dropping NaNs. Cannot use Isolation Forest.")
+                
+                # Store the detected anomaly rows in session state
+                st.session_state.anomalies_detected_df = df[anomalies_mask].copy()
+                
+                anomaly_count = anomalies_mask.sum()
                 st.metric("Anomalies Found", anomaly_count)
                 
                 # Visualization
                 fig = go.Figure()
-                fig.add_trace(go.Scatter(y=df[anomaly_col], mode='markers', name='Normal', 
-                                       marker=dict(color='blue', size=4)))
-                if anomaly_count > 0:
-                    anomaly_data = df[anomalies] if hasattr(anomalies, 'sum') else df.iloc[np.where(anomalies)[0]]
-                    fig.add_trace(go.Scatter(y=anomaly_data[anomaly_col], mode='markers', name='Anomalies',
-                                           marker=dict(color='red', size=8)))
-                fig.update_layout(title=f"Anomaly Detection: {anomaly_col}")
+                # Plot all points, highlighting anomalies based on the mask
+                fig.add_trace(go.Scatter(x=df.index, y=df[anomaly_col], mode='markers', name='Data Points',
+                                       marker=dict(color=np.where(anomalies_mask, 'red', custom_color), 
+                                                   size=np.where(anomalies_mask, 8, 5))))
+                
+                fig.update_layout(title=f"Anomaly Detection in '{anomaly_col}' using {method} method",
+                                  xaxis_title="Index", yaxis_title=anomaly_col)
                 st.plotly_chart(fig, use_container_width=True)
+
+                if anomaly_count > 0:
+                    st.write("Detected Anomalies (first 100 rows):")
+                    st.dataframe(st.session_state.anomalies_detected_df.head(100))
+            else:
+                st.info("Anomaly detection requires numeric columns.")
 
         # NEW FEATURE 12: Time Series Analysis
         # Uses globally defined date_cols, numeric_cols
