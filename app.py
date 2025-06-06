@@ -3668,38 +3668,6 @@ NumericColumn1 &lt; 0.4
                                 st.pyplot(shap.summary_plot(shap_values[1], X_shap_final, plot_type="bar", class_names=le_shap.classes_, show=False))
                                 plt.clf()
 
-                            # Individual force plot (for a sample prediction)
-                            if len(X_shap_final) > 0:
-                                st.write("#### SHAP Force Plot (for first instance)")
-                                idx_to_plot = 0 # Plot for the first instance in X_shap_final
-                                features_for_plot_instance_series = X_shap_final.iloc[idx_to_plot]
-                                features_for_plot_instance_np = features_for_plot_instance_series.values
-                                feature_names_for_plot = X_shap_final.columns.tolist()
-
-                                # Determine base_value and shap_values for this single instance
-                                if is_classification_shap:
-                                    # For classifiers, shap_values is a list of arrays (one per class).
-                                    # expected_value is an array (one value per class).
-                                    # We'll explain class 1 (positive class for binary, or one of the classes for multiclass).
-                                    class_to_explain = 1
-                                    if class_to_explain >= len(explainer.expected_value) or class_to_explain >= len(shap_values):
-                                        st.warning(f"Attempting to explain class {class_to_explain}, but model has fewer outputs. Defaulting to class 0.")
-                                        class_to_explain = 0
-
-                                    base_value_for_force_plot = explainer.expected_value[class_to_explain]
-                                    shap_values_for_force_plot_instance = shap_values[class_to_explain][idx_to_plot, :]
-                                else: # Regression
-                                    base_value_for_force_plot = explainer.expected_value # Scalar
-                                    # shap_values is an (N,M) array
-                                    shap_values_for_force_plot_instance = shap_values[idx_to_plot, :]
-
-                                st.pyplot(shap.force_plot(base_value_for_force_plot, 
-                                                          shap_values_for_force_plot_instance,
-                                                          features=features_for_plot_instance_np,
-                                                          feature_names=feature_names_for_plot,
-                                                          matplotlib=True, show=False))
-                                plt.clf()
-
                         except Exception as e:
                             st.error(f"Error during SHAP analysis: {e}")
                 else:
