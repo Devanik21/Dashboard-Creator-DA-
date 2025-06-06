@@ -1,4 +1,6 @@
-lifelines 
+lifelines
+prophet 
+shap 
 streamlit
 nltk
 pandas
