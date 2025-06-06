@@ -12,7 +12,7 @@ from sklearn.ensemble import IsolationForest
 from sklearn.preprocessing import OneHotEncoder, StandardScaler, MinMaxScaler, PolynomialFeatures
 from sklearn.decomposition import PCA 
 from sklearn.model_selection import train_test_split 
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import LinearRegression 
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error, r2_score, accuracy_score, classification_report
 import folium
@@ -53,13 +53,14 @@ from sklearn.decomposition import LatentDirichletAllocation # For LDA
 from sklearn.metrics import roc_auc_score, roc_curve
 from sklearn.inspection import PartialDependenceDisplay # For PDP/ICE plots
 
-warnings.filterwarnings('ignore')
+warnings.filterwarnings('ignore') 
 # New imports for SHAP and Prophet
 import shap # For SHAP
 from prophet import Prophet # For Prophet forecasting
 from prophet.plot import plot_plotly as prophet_plot_plotly, plot_components_plotly as prophet_plot_components_plotly # For Prophet plots
 
 # Page configuration
+from sklearn.ensemble import GradientBoostingClassifier
 st.set_page_config(layout="wide", page_title="Advanced Dashboard Creator", page_icon="📊")
 
 with st.sidebar:
@@ -3818,7 +3819,9 @@ NumericColumn1 &lt; 0.4
 
                             models_to_compare = {
                                 "Logistic Regression": LogisticRegression(solver='liblinear', random_state=42, class_weight='balanced'),
-                                "Random Forest": RandomForestClassifier(random_state=42, n_estimators=50, class_weight='balanced')
+                                "Random Forest": RandomForestClassifier(random_state=42, n_estimators=50, class_weight='balanced'),
+                                "Decision Tree": DecisionTreeClassifier(random_state=42, class_weight='balanced'),
+                                "Gradient Boosting": GradientBoostingClassifier(random_state=42, n_estimators=50)
                             }
                             
                             results_comparison = []
