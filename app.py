@@ -3316,6 +3316,42 @@ LIMIT 5;
                     )
                     st.caption("Use backticks (`) around column names if they contain spaces or special characters (e.g., ``My Column``). Refer to Pandas `DataFrame.query()` documentation for full syntax.")
 
+                    # Use HTML details tag for collapsible examples
+                    st.markdown("""
+                    <details>
+                        <summary style="cursor:pointer; color: #A0AEC0; font-weight: 600;">💡 Pandas Query Examples (click to expand)</summary>
+                        <div style="padding-top: 10px;">
+                        Adapt column names (e.g., <code>Amount</code>, <code>Category</code>, <code>Product Name</code>, <code>Qty</code>, <code>Price</code>) to match your dataset.
+                        <br><br>
+                        <strong>🛒 1. Filter by Amount and Category</strong>
+                        <pre><code class="language-python">
+# Example: Select electronics products with an amount greater than 100
+`Amount > 100 and Category == 'Electronics'`
+                        </code></pre>
+                        <strong>📦 2. Calculate and Filter on a New Value</strong>
+                        <pre><code class="language-python">
+# Example: Find orders where total value (Quantity * Price) is over 500
+`(`Qty` * `Price`) > 500`
+                        </code></pre>
+                        <strong>🏷️ 3. Filter Using String Methods (e.g., contains)</strong>
+                        <pre><code class="language-python">
+# Example: Find products whose names contain 'Premium' (case-insensitive)
+`Q("Product Name".str.contains("Premium", case=False))`
+                        </code></pre>
+                        <strong>🔢 4. Filter Using List Membership (IN operator)</strong>
+                        <pre><code class="language-python">
+# Example: Select products from specific categories
+`Category in ['Books', 'Home Goods', 'Appliances']`
+                        </code></pre>
+                        <strong>📉 5. Filter by Multiple Numeric Conditions (OR logic)</strong>
+                        <pre><code class="language-python">
+# Example: Find items with low quantity (less than 5) OR high price (greater than 1000)
+`Qty < 5 or Price > 1000`
+                        </code></pre>
+                        </div>
+                    </details>
+                    """, unsafe_allow_html=True)
+
                     if st.button("🔍 Run Pandas Query", key="run_pandas_query_button"):
                         if query_pq_string:
                             try:
