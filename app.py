@@ -3325,32 +3325,39 @@ LIMIT 5;
                         <div style="padding-top: 10px;">
                         Remember to replace placeholder column names (e.g., <code>NumericColumn1</code>, <code>StringColumnA</code>, <code>`Column With Spaces`</code>) with actual column names from your selected dataset (<code>{excel_query_selected_dataset_name}</code>).
                         <br><br>
-                        <strong>⚠️ Examples that might require data type preprocessing (e.g., if a column is text instead of numeric):</strong>
+                        <strong>⚠️ Examples that might require data type preprocessing:</strong>
                         <pre><code class="language-plaintext">
-# If 'NumericColumn1' is a string/object type, this will error. Ensure it's numeric.
-NumericColumn1 &lt; 0.4
+# If 'ActualNumericColumn' is incorrectly a string/object type, this numeric comparison will error.
+# Ensure it's converted to a numeric type for correct results.
+ActualNumericColumn &lt; 0.4
 
-# If 'NumericColumn2' is a string/object, this will error. Ensure it's numeric.
-NumericColumn2 &gt; 500
+# Similarly, if 'TP_Column' (which should be numeric) is a string, this will error:
+TP_Column &gt; 500
                         </code></pre>
-                        <p style="color: #FFA500;">If you encounter errors like "'&lt;' not supported between instances of 'str' and 'float'", use the "Smart Data Type Detection & Conversion" tool to convert the relevant column to a numeric type.</p>
+                        <p style="color: #FFA500;">If you encounter errors like "'&lt;' not supported between instances of 'str' and 'float'", use the "Smart Data Type Detection & Conversion" tool to convert the relevant column to a numeric type for proper numerical comparisons.</p>
 
-                        <strong>✅ Examples that generally work well (especially with correct data types and backticks for special column names):</strong>
+                        <strong>✅ Examples that generally work (mind the data types for comparisons):</strong>
                         <pre><code class="language-plaintext">
-# Simple string comparison
+# Correct string comparison for a text column
 StringColumnA == 'SomeValue'
 
-# Numeric comparison with backticks for column names with spaces
+# Numeric comparison (assumes `Numeric Column With Spaces` is a numeric type)
 `Numeric Column With Spaces` &gt; 2000
 
-# Comparing two columns (ensure both are numeric)
+# String comparison with a string literal that looks like a number.
+# This works if `StringTPColumn` is a string type.
+# Note: This is a lexicographical (text) comparison, e.g., '60' > '500' would be TRUE.
+`StringTPColumn` &gt; '500'
+
+# Comparing two numeric columns (ensure both are numeric type)
+NumericColumn1 &lt; 0.4
 `NumericColumnA` &lt;= `NumericColumnB`
 
 # Combining conditions
 `CategoricalColumnX` == 'CategoryX_ValueY' and NumericColumn3 &gt; 1000
 
 # Using string methods (ensure the column is string type)
-`TextColumn`.str.startswith('Prefix')
+`AnotherTextColumn`.str.startswith('Prefix')
                         </code></pre>
                         Refer to the <a href="https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.query.html" target="_blank">pandas DataFrame.query() documentation</a> for more syntax details. Use backticks (`) around column names with spaces or special characters (e.g., `My Column-Name`).
                         </div>
