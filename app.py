@@ -3209,7 +3209,7 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
                 st.info("CLV Profiler requires categorical/numeric ID, date, and numeric amount columns.")
 
         # --- ADVANCED TOOL 11: SQL Query Workbench ---
-        with st.expander("🔍 ADVANCED TOOL 11: SQL Query Workbench"):
+        with st.expander("🗃️ SQL Query Workbench (Data Interaction Category)", expanded=True):
             st.subheader("Execute SQL Queries on Your DataFrames")
             st.info("Select a dataset and write SQL queries to analyze it. The DataFrame will be treated as a table within the query context.")
 
