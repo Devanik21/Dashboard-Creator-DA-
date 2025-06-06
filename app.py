@@ -3295,7 +3295,7 @@ LIMIT 5;
                             st.warning("Please enter an SQL query.")
 
         # --- ADVANCED TOOL 13: Excel-like Query Workbench ---
-        with st.expander("📊 ADVANCED TOOL 13: Excel-like Query Workbench", expanded=False):
+        with st.expander("📊 Excel-like Query Workbench", expanded=True):
             st.subheader("Query DataFrames with Excel-like Expressions")
             st.info("Select a dataset and use pandas `query()` syntax to filter and analyze it. This is useful for Excel users familiar with formula-based filtering.")
 
