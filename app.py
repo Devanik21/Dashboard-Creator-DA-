@@ -53,6 +53,10 @@ from sklearn.decomposition import LatentDirichletAllocation # For LDA
 from sklearn.inspection import PartialDependenceDisplay # For PDP/ICE plots
 
 warnings.filterwarnings('ignore')
+# New imports for SHAP and Prophet
+import shap # For SHAP
+from prophet import Prophet # For Prophet forecasting
+from prophet.plot import plot_plotly as prophet_plot_plotly, plot_components_plotly as prophet_plot_components_plotly # For Prophet plots
 
 # Page configuration
 st.set_page_config(layout="wide", page_title="Advanced Dashboard Creator", page_icon="📊")
@@ -3596,13 +3600,280 @@ NumericColumn1 &lt; 0.4
                         else:
                             st.warning("Please enter an Excel-like query expression.")
 
+        # --- ADVANCED TOOL 14: Enhanced Model Explainability with SHAP ---
+        with st.expander("✨ ADVANCED TOOL 14: Enhanced Model Explainability with SHAP"):
+            st.subheader("Explain Model Predictions with SHAP")
+            st.info("Use SHAP (SHapley Additive exPlanations) to understand feature contributions to model predictions. A Random Forest model will be trained for demonstration.")
+            if not df.empty:
+                shap_target_col = st.selectbox("Select Target Variable for SHAP Model", df.columns, key="shap_target")
+                shap_feature_options = [col for col in df.columns if col != shap_target_col]
+                shap_features = st.multiselect("Select Features for SHAP Model Training", shap_feature_options, default=shap_feature_options[:min(5, len(shap_feature_options))], key="shap_model_features")
+
+                if shap_target_col and shap_features:
+                    if st.button("Train Model & Generate SHAP Plots", key="run_shap"):
+                        try:
+                            shap_df_prep = df[[shap_target_col] + shap_features].copy().dropna()
+                            y_shap = shap_df_prep[shap_target_col]
+                            X_shap = shap_df_prep[shap_features]
+                            X_shap_processed = pd.get_dummies(X_shap, drop_first=True)
+
+                            imputer_shap = SimpleImputer(strategy='median')
+                            X_shap_imputed = imputer_shap.fit_transform(X_shap_processed)
+                            X_shap_imputed_df = pd.DataFrame(X_shap_imputed, columns=X_shap_processed.columns, index=X_shap_processed.index)
+                            
+                            y_aligned_shap = y_shap.loc[X_shap_imputed_df.index].dropna()
+                            X_shap_final = X_shap_imputed_df.loc[y_aligned_shap.index]
+
+                            if X_shap_final.empty or y_aligned_shap.empty:
+                                st.error("Not enough data after preprocessing for SHAP analysis.")
+                                st.stop()
+
+                            is_classification_shap = False
+                            if pd.api.types.is_numeric_dtype(y_aligned_shap.dtype):
+                                if y_aligned_shap.nunique() <= 10 and y_aligned_shap.nunique() > 1:
+                                    is_classification_shap = True
+                                elif y_aligned_shap.nunique() == 1:
+                                    st.error(f"Target column '{shap_target_col}' has only one unique value. Cannot train model.")
+                                    st.stop()
+                            else:
+                                is_classification_shap = True
+
+                            if is_classification_shap:
+                                le_shap = LabelEncoder()
+                                y_shap_encoded = le_shap.fit_transform(y_aligned_shap)
+                                if len(le_shap.classes_) <= 1:
+                                    st.error(f"Target column '{shap_target_col}' effectively has only one class after encoding.")
+                                    st.stop()
+                                shap_model = RandomForestClassifier(random_state=42, n_estimators=50)
+                            else:
+                                y_shap_encoded = y_aligned_shap
+                                shap_model = RandomForestRegressor(random_state=42, n_estimators=50)
+
+                            shap_model.fit(X_shap_final, y_shap_encoded)
+                            st.success(f"Model ({'Classifier' if is_classification_shap else 'Regressor'}) trained successfully for SHAP analysis.")
+
+                            explainer = shap.TreeExplainer(shap_model)
+                            shap_values = explainer.shap_values(X_shap_final)
+
+                            st.write("#### SHAP Summary Plot (Bar)")
+                            st.pyplot(shap.summary_plot(shap_values, X_shap_final, plot_type="bar", show=False))
+                            plt.clf() # Clear the current figure to avoid overlap
+
+                            st.write("#### SHAP Summary Plot (Dot/Violin)")
+                            st.pyplot(shap.summary_plot(shap_values, X_shap_final, show=False))
+                            plt.clf()
+
+                            if is_classification_shap and isinstance(shap_values, list) and len(shap_values) > 1: # For multi-class classification
+                                st.info("For multi-class classification, SHAP values are generated per class. Showing summary for class 1.")
+                                st.pyplot(shap.summary_plot(shap_values[1], X_shap_final, plot_type="bar", class_names=le_shap.classes_, show=False))
+                                plt.clf()
+
+                            # Individual force plot (for a sample prediction)
+                            if len(X_shap_final) > 0:
+                                st.write("#### SHAP Force Plot (for first instance)")
+                                # For multi-class, shap_values is a list of arrays. We need to pick one for force plot.
+                                shap_values_for_force = shap_values[1] if is_classification_shap and isinstance(shap_values, list) else shap_values
+                                st.pyplot(shap.force_plot(explainer.expected_value[1] if is_classification_shap and isinstance(explainer.expected_value, (list, np.ndarray)) and len(explainer.expected_value)>1 else explainer.expected_value, 
+                                                          shap_values_for_force[0,:], X_shap_final.iloc[0,:], matplotlib=True, show=False))
+                                plt.clf()
+
+                        except Exception as e:
+                            st.error(f"Error during SHAP analysis: {e}")
+                else:
+                    st.info("Select a target variable and features for the model.")
+            else:
+                st.info("Upload data to perform SHAP analysis.")
+
+        # --- ADVANCED TOOL 15: Advanced Time Series Forecasting with Prophet ---
+        with st.expander("📈 ADVANCED TOOL 15: Advanced Time Series Forecasting with Prophet"):
+            st.subheader("Forecast Time Series Data using Prophet")
+            st.info("Prophet is robust to missing data and shifts in trend, and typically handles seasonality well. Requires a date column and a numeric value column.")
+            if date_cols and numeric_cols:
+                prophet_date_col = st.selectbox("Select Date Column for Prophet", date_cols, key="prophet_date")
+                prophet_value_col = st.selectbox("Select Value Column for Prophet", numeric_cols, key="prophet_value")
+                prophet_periods = st.number_input("Periods to Forecast (Prophet)", 1, 365 * 2, 30, key="prophet_periods")
+                prophet_freq = st.selectbox("Forecast Frequency", ['D', 'W', 'M'], index=0, key="prophet_freq", help="D: Day, W: Week, M: Month")
+
+                if prophet_date_col and prophet_value_col:
+                    if st.button("Run Prophet Forecast", key="run_prophet"):
+                        try:
+                            prophet_df_prep = df[[prophet_date_col, prophet_value_col]].copy().dropna()
+                            prophet_df_prep.columns = ['ds', 'y'] # Prophet requires these column names
+                            prophet_df_prep['ds'] = pd.to_datetime(prophet_df_prep['ds'])
+                            prophet_df_prep = prophet_df_prep.sort_values('ds')
+
+                            if len(prophet_df_prep) < 2:
+                                st.warning("Not enough data points for Prophet after filtering (need at least 2).")
+                            else:
+                                model_prophet = Prophet()
+                                model_prophet.fit(prophet_df_prep)
+                                future_df = model_prophet.make_future_dataframe(periods=prophet_periods, freq=prophet_freq)
+                                forecast_df = model_prophet.predict(future_df)
+
+                                st.write("#### Prophet Forecast Plot")
+                                fig_prophet_forecast = prophet_plot_plotly(model_prophet, forecast_df)
+                                st.plotly_chart(fig_prophet_forecast, use_container_width=True)
+
+                                st.write("#### Prophet Forecast Components")
+                                fig_prophet_components = prophet_plot_components_plotly(model_prophet, forecast_df)
+                                st.plotly_chart(fig_prophet_components, use_container_width=True)
+
+                                st.write("#### Forecast Data (Last 10 periods + Forecast)")
+                                st.dataframe(forecast_df[['ds', 'yhat', 'yhat_lower', 'yhat_upper']].tail(prophet_periods + 10))
+
+                        except ImportError:
+                            st.error("The 'prophet' library is required for this feature. Please install it (`pip install prophet`).")
+                        except Exception as e:
+                            st.error(f"Error during Prophet forecasting: {e}")
+                else:
+                    st.info("Select a date column and a numeric value column.")
+            else:
+                st.info("Prophet forecasting requires a date column and a numeric value column.")
+
+        # --- ADVANCED TOOL 16: Interactive Chart Customization & Drill-Downs ---
+        with st.expander("🎨 ADVANCED TOOL 16: Interactive Chart Customization"):
+            st.subheader("Build Customized Interactive Charts")
+            st.info("Select chart type, axes, and additional options like color, faceting for deeper visual exploration.")
+            if not df.empty:
+                chart_type_interactive = st.selectbox("Select Chart Type", ["Scatter", "Bar", "Line", "Histogram", "Box"], key="interactive_chart_type")
+
+                x_col_interactive = st.selectbox("Select X-axis", [None] + df.columns.tolist(), key="interactive_x")
+                y_col_interactive = st.selectbox("Select Y-axis", [None] + df.columns.tolist(), key="interactive_y")
+                
+                color_col_interactive = st.selectbox("Color by (Categorical Column - Optional)", [None] + categorical_cols, key="interactive_color")
+                facet_row_interactive = st.selectbox("Facet by Row (Categorical Column - Optional)", [None] + categorical_cols, key="interactive_facet_row")
+                facet_col_interactive = st.selectbox("Facet by Column (Categorical Column - Optional)", [None] + categorical_cols, key="interactive_facet_col")
+                
+                agg_func_interactive = None
+                if chart_type_interactive in ["Bar", "Line"] and y_col_interactive and df[y_col_interactive].dtype == np.number:
+                    agg_func_interactive = st.selectbox("Aggregation Function for Y-axis (if applicable)", ["None (raw values)", "mean", "sum", "count"], key="interactive_agg")
+                    if agg_func_interactive == "None (raw values)": agg_func_interactive = None
+
+                if x_col_interactive and (y_col_interactive or chart_type_interactive == "Histogram"):
+                    try:
+                        fig_interactive = None
+                        plot_df_interactive = df.copy()
+                        
+                        # Apply aggregation if selected
+                        if agg_func_interactive and x_col_interactive and y_col_interactive:
+                            grouping_cols = [x_col_interactive]
+                            if color_col_interactive: grouping_cols.append(color_col_interactive)
+                            if facet_row_interactive: grouping_cols.append(facet_row_interactive)
+                            if facet_col_interactive: grouping_cols.append(facet_col_interactive)
+                            
+                            plot_df_interactive = plot_df_interactive.groupby(list(set(grouping_cols)))[y_col_interactive].agg(agg_func_interactive).reset_index()
+
+                        if chart_type_interactive == "Scatter":
+                            fig_interactive = px.scatter(plot_df_interactive, x=x_col_interactive, y=y_col_interactive, color=color_col_interactive, facet_row=facet_row_interactive, facet_col=facet_col_interactive, title=f"Interactive Scatter: {y_col_interactive} vs {x_col_interactive}")
+                        elif chart_type_interactive == "Bar":
+                            fig_interactive = px.bar(plot_df_interactive, x=x_col_interactive, y=y_col_interactive, color=color_col_interactive, facet_row=facet_row_interactive, facet_col=facet_col_interactive, title=f"Interactive Bar: {y_col_interactive} by {x_col_interactive}")
+                        elif chart_type_interactive == "Line":
+                             fig_interactive = px.line(plot_df_interactive, x=x_col_interactive, y=y_col_interactive, color=color_col_interactive, facet_row=facet_row_interactive, facet_col=facet_col_interactive, title=f"Interactive Line: {y_col_interactive} over {x_col_interactive}", markers=True)
+                        elif chart_type_interactive == "Histogram":
+                            fig_interactive = px.histogram(plot_df_interactive, x=x_col_interactive, color=color_col_interactive, facet_row=facet_row_interactive, facet_col=facet_col_interactive, title=f"Interactive Histogram: {x_col_interactive}", marginal="rug")
+                        elif chart_type_interactive == "Box":
+                            fig_interactive = px.box(plot_df_interactive, x=x_col_interactive, y=y_col_interactive, color=color_col_interactive, facet_row=facet_row_interactive, facet_col=facet_col_interactive, title=f"Interactive Box Plot: {y_col_interactive} by {x_col_interactive}")
+                        
+                        if fig_interactive:
+                            st.plotly_chart(fig_interactive, use_container_width=True)
+                        else:
+                            st.info("Chart could not be generated with current selections.")
+                    except Exception as e:
+                        st.error(f"Error generating interactive chart: {e}")
+                else:
+                    st.info("Select X-axis and Y-axis (or just X-axis for Histogram) to generate a chart.")
+            else:
+                st.info("Upload data to use the interactive chart builder.")
+
+        # --- ADVANCED TOOL 17: Robust Model Evaluation and Comparison Dashboard ---
+        with st.expander("📊 ADVANCED TOOL 17: Model Evaluation & Comparison Dashboard"):
+            st.subheader("Compare Performance of Trained Models")
+            st.info("This tool allows comparison of models trained for the same task (classification or regression). For demonstration, it trains Logistic Regression and Random Forest for a selected binary target.")
+            
+            if not df.empty:
+                eval_target_col = st.selectbox("Select Binary Target for Model Comparison", [col for col in df.columns if df[col].nunique()==2], key="eval_target") # Filter for binary cols
+                eval_feature_options = [col for col in df.columns if col != eval_target_col]
+                eval_features = st.multiselect("Select Features for Model Comparison", eval_feature_options, default=eval_feature_options[:min(5, len(eval_feature_options))], key="eval_features")
+
+                if eval_target_col and eval_features:
+                    if st.button("Train & Compare Models", key="run_model_comparison"):
+                        try:
+                            eval_df_prep = df[[eval_target_col] + eval_features].copy().dropna()
+                            y_eval = eval_df_prep[eval_target_col]
+                            X_eval = eval_df_prep[eval_features]
+
+                            # Ensure target is 0/1
+                            unique_eval_vals = sorted(y_eval.unique())
+                            if len(unique_eval_vals) == 2:
+                                y_eval = y_eval.map({unique_eval_vals[0]: 0, unique_eval_vals[1]: 1})
+                            else:
+                                st.error("Selected target for comparison is not binary.")
+                                st.stop()
+
+                            X_eval_processed = pd.get_dummies(X_eval, drop_first=True)
+                            imputer_eval = SimpleImputer(strategy='median')
+                            X_eval_imputed = imputer_eval.fit_transform(X_eval_processed)
+                            X_eval_imputed_df = pd.DataFrame(X_eval_imputed, columns=X_eval_processed.columns, index=X_eval_processed.index)
+
+                            y_aligned_eval = y_eval.loc[X_eval_imputed_df.index].dropna()
+                            X_final_eval = X_eval_imputed_df.loc[y_aligned_eval.index]
+
+                            if X_final_eval.empty or y_aligned_eval.empty:
+                                st.error("Not enough data after preprocessing for model comparison.")
+                                st.stop()
+
+                            X_train_eval, X_test_eval, y_train_eval, y_test_eval = train_test_split(X_final_eval, y_aligned_eval, test_size=0.3, random_state=42, stratify=y_aligned_eval)
+
+                            models_to_compare = {
+                                "Logistic Regression": LogisticRegression(solver='liblinear', random_state=42, class_weight='balanced'),
+                                "Random Forest": RandomForestClassifier(random_state=42, n_estimators=50, class_weight='balanced')
+                            }
+                            
+                            results_comparison = []
+                            roc_curves_data = []
+
+                            for name, model_instance in models_to_compare.items():
+                                model_instance.fit(X_train_eval, y_train_eval)
+                                y_pred_eval = model_instance.predict(X_test_eval)
+                                y_proba_eval = model_instance.predict_proba(X_test_eval)[:, 1]
+                                
+                                report = classification_report(y_test_eval, y_pred_eval, output_dict=True, zero_division=0)
+                                results_comparison.append({
+                                    "Model": name,
+                                    "Accuracy": report['accuracy'],
+                                    "Precision (1)": report['1']['precision'] if '1' in report else report.get('weighted avg',{}).get('precision'),
+                                    "Recall (1)": report['1']['recall'] if '1' in report else report.get('weighted avg',{}).get('recall'),
+                                    "F1-score (1)": report['1']['f1-score'] if '1' in report else report.get('weighted avg',{}).get('f1-score'),
+                                    "ROC AUC": roc_auc_score(y_test_eval, y_proba_eval)
+                                })
+                                fpr, tpr, _ = roc_curve(y_test_eval, y_proba_eval)
+                                roc_curves_data.append({'fpr': fpr, 'tpr': tpr, 'label': f'{name} (AUC = {roc_auc_score(y_test_eval, y_proba_eval):.2f})'})
+
+                            st.write("#### Model Performance Metrics")
+                            st.dataframe(pd.DataFrame(results_comparison))
+
+                            st.write("#### ROC Curves")
+                            fig_roc = go.Figure()
+                            for curve_data in roc_curves_data:
+                                fig_roc.add_trace(go.Scatter(x=curve_data['fpr'], y=curve_data['tpr'], mode='lines', name=curve_data['label']))
+                            fig_roc.add_trace(go.Scatter(x=[0, 1], y=[0, 1], mode='lines', name='Baseline (Random)', line=dict(dash='dash', color='grey')))
+                            fig_roc.update_layout(title="ROC Curves Comparison", xaxis_title="False Positive Rate", yaxis_title="True Positive Rate")
+                            st.plotly_chart(fig_roc, use_container_width=True)
+
+                        except Exception as e:
+                            st.error(f"Error during model comparison: {e}")
+                else:
+                    st.info("Select a binary target and feature columns for model comparison.")
+            else:
+                st.info("Upload data to use the model evaluation dashboard.")
+
         # --- ADVANCED TOOL 6: Anomaly Investigation & Explanation ---
         with st.expander("🕵️ ADVANCED TOOL 6: Anomaly Investigation & Explanation"):
             st.subheader("Investigate and Explain Detected Anomalies")
             st.info("This tool helps explain anomalies detected by the 'Anomaly Detection Dashboard'. First, review feature comparisons, then optionally use AI for a narrative explanation.")
 
             if not gemini_api_key:
-                st.warning("Please enter your Gemini API key in the sidebar to use this AI-powered tool.")
+                st.warning("Please enter your Gemini API key in the sidebar to use the AI explanation feature of this tool.")
             elif 'anomalies_detected_df' not in st.session_state or st.session_state.anomalies_detected_df.empty:
                 st.info("No anomalies detected yet. Please run the 'Anomaly Detection Dashboard' (Feature 11) first to identify anomalies.")
             else:
