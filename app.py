@@ -4328,6 +4328,120 @@ Be concise, insightful, and actionable. Structure your response clearly with hea
                                  f"{theme_name.lower().replace(' ', '_')}_theme.json",
                                  key="theme_download_button")
 
+        # --- Miscellaneous Tool: Data Dictionary Generator ---
+        with st.expander("📚 Miscellaneous Tool: Data Dictionary Generator"):
+            st.subheader("Generate a Data Dictionary for Your Dataset")
+            if not df.empty:
+                data_dict = pd.DataFrame({
+                    "Column": df.columns,
+                    "Data Type": [str(df[col].dtype) for col in df.columns],
+                    "Unique Values": [df[col].nunique() for col in df.columns],
+                    "Missing %": [df[col].isnull().mean()*100 for col in df.columns]
+                })
+                st.dataframe(data_dict)
+                st.download_button("Download Data Dictionary", data_dict.to_csv(index=False), file_name="data_dictionary.csv")
+            else:
+                st.info("Upload data to generate a data dictionary.")
+
+        # --- Miscellaneous Tool: Random Row Sampler ---
+        with st.expander("🎲 Miscellaneous Tool: Random Row Sampler"):
+            st.subheader("Sample Random Rows from Your Data")
+            if not df.empty:
+                n_sample = st.number_input("Number of Rows to Sample", 1, min(10, len(df)), 5)
+                if st.button("Sample Rows"):
+                    st.dataframe(df.sample(n=n_sample))
+            else:
+                st.info("Upload data to sample rows.")
+
+        # --- Miscellaneous Tool: Column Renamer ---
+        with st.expander("✏️ Miscellaneous Tool: Column Renamer"):
+            st.subheader("Rename Columns Easily")
+            if not df.empty:
+                col_to_rename = st.selectbox("Select Column to Rename", df.columns)
+                new_col_name = st.text_input("New Column Name", "")
+                if st.button("Rename Column"):
+                    if new_col_name and new_col_name not in df.columns:
+                        df.rename(columns={col_to_rename: new_col_name}, inplace=True)
+                        st.success(f"Renamed '{col_to_rename}' to '{new_col_name}'.")
+                        st.rerun()
+                    else:
+                        st.warning("Provide a unique new column name.")
+            else:
+                st.info("Upload data to rename columns.")
+
+        # --- Miscellaneous Tool: Value Replacer ---
+        with st.expander("🔄 Miscellaneous Tool: Value Replacer"):
+            st.subheader("Replace Values in a Column")
+            if not df.empty:
+                col_replace = st.selectbox("Select Column", df.columns)
+                old_value = st.text_input("Value to Replace")
+                new_value = st.text_input("Replace With")
+                if st.button("Replace Value"):
+                    df[col_replace] = df[col_replace].replace(old_value, new_value)
+                    st.success(f"Replaced '{old_value}' with '{new_value}' in '{col_replace}'.")
+                    st.rerun()
+            else:
+                st.info("Upload data to replace values.")
+
+        # --- Miscellaneous Tool: Duplicate Column Finder ---
+        with st.expander("🧬 Miscellaneous Tool: Duplicate Column Finder"):
+            st.subheader("Find Columns with Identical Data")
+            if not df.empty:
+                duplicates = []
+                for i, col1 in enumerate(df.columns):
+                    for col2 in df.columns[i+1:]:
+                        if df[col1].equals(df[col2]):
+                            duplicates.append((col1, col2))
+                if duplicates:
+                    st.write("Duplicate columns found:")
+                    for col1, col2 in duplicates:
+                        st.write(f"{col1} and {col2}")
+                else:
+                    st.info("No duplicate columns found.")
+            else:
+                st.info("Upload data to check for duplicate columns.")
+
+        # --- Miscellaneous Tool: Column Value Counter ---
+        with st.expander("🔢 Miscellaneous Tool: Column Value Counter"):
+            st.subheader("Count Occurrences of a Value in a Column")
+            if not df.empty:
+                col_count = st.selectbox("Select Column", df.columns)
+                value_count = st.text_input("Value to Count")
+                if st.button("Count Value"):
+                    count = (df[col_count] == value_count).sum()
+                    st.write(f"Value '{value_count}' appears {count} times in '{col_count}'.")
+            else:
+                st.info("Upload data to count values.")
+
+        # --- Miscellaneous Tool: Dataframe Shape Viewer ---
+        with st.expander("📏 Miscellaneous Tool: Dataframe Shape Viewer"):
+            st.subheader("Quickly View DataFrame Shape")
+            if not df.empty:
+                st.write(f"Rows: {df.shape[0]}, Columns: {df.shape[1]}")
+            else:
+                st.info("Upload data to view shape.")
+
+        # --- Miscellaneous Tool: Column Type Summary ---
+        with st.expander("🧮 Miscellaneous Tool: Column Type Summary"):
+            st.subheader("Summary of Column Data Types")
+            if not df.empty:
+                type_summary = df.dtypes.value_counts().reset_index()
+                type_summary.columns = ["Data Type", "Count"]
+                st.dataframe(type_summary)
+            else:
+                st.info("Upload data to view column type summary.")
+
+        # --- Miscellaneous Tool: Null Value Heatmap ---
+        with st.expander("🌡️ Miscellaneous Tool: Null Value Heatmap"):
+            st.subheader("Visualize Missing Data as a Heatmap")
+            if not df.empty:
+                import seaborn as sns
+                fig, ax = plt.subplots(figsize=(min(12, len(df.columns)*0.7), 6))
+                sns.heatmap(df.isnull(), cbar=False, ax=ax)
+                st.pyplot(fig)
+            else:
+                st.info("Upload data to visualize missing values.")
+
 
     # Sample data generator for testing (moved outside expanders)
     if st.button("🎲 Generate Sample Data & Explore Features", key="generate_sample_data_button"):
