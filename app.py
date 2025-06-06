@@ -3207,6 +3207,80 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
             else:
                 st.info("CLV Profiler requires categorical/numeric ID, date, and numeric amount columns.")
 
+        # --- ADVANCED TOOL 6: AI-Enhanced Anomaly Investigation ---
+        with st.expander("🕵️ ADVANCED TOOL 6: AI-Enhanced Anomaly Investigation"):
+            st.subheader("Get AI-Driven Explanations for Detected Anomalies")
+            st.info("This tool uses AI to provide deeper insights into anomalies identified by the 'Anomaly Detection Dashboard'. Select an anomaly and relevant features for AI analysis.")
+
+            if not gemini_api_key:
+                st.warning("Please enter your Gemini API key in the sidebar to use this AI-powered tool.")
+            elif 'anomalies_detected_df' not in st.session_state or st.session_state.anomalies_detected_df.empty:
+                st.info("No anomalies detected yet. Please run the 'Anomaly Detection Dashboard' (Feature 11) first to identify anomalies.")
+            else:
+                anomalies_for_ai_df = st.session_state.anomalies_detected_df
+                st.write("Detected Anomalies (available for AI investigation):")
+                st.dataframe(anomalies_for_ai_df.head())
+
+                selected_anomaly_index_ai = st.selectbox(
+                    "Select Anomaly Index for AI Investigation",
+                    anomalies_for_ai_df.index.tolist(),
+                    key="ai_anomaly_select_idx"
+                )
+
+                if selected_anomaly_index_ai is not None:
+                    anomaly_to_explain = df.loc[selected_anomaly_index_ai]
+                    st.write(f"#### Details for Anomaly at Index: {selected_anomaly_index_ai}")
+                    st.dataframe(anomaly_to_explain.to_frame().T)
+
+                    # Allow user to select features they think are relevant for the AI's context
+                    contextual_features_for_ai = st.multiselect(
+                        "Select Features to Provide as Context to AI",
+                        df.columns.tolist(),
+                        default=[col for col in numeric_cols[:3] + categorical_cols[:2] if col in df.columns], # Sensible defaults
+                        key="ai_anomaly_context_features"
+                    )
+
+                    if st.button("🤖 Get AI Explanation for Anomaly", key="run_ai_anomaly_explanation"):
+                        with st.spinner("AI is investigating the anomaly..."):
+                            # Prepare context for the AI
+                            anomaly_details_str = "\n".join([f"- {col}: {anomaly_to_explain[col]}" for col in anomaly_to_explain.index if pd.notna(anomaly_to_explain[col])])
+                            
+                            comparison_str = ""
+                            non_anomaly_data_ai = df.drop(anomalies_for_ai_df.index, errors='ignore')
+                            for col in contextual_features_for_ai:
+                                if col in anomaly_to_explain and pd.notna(anomaly_to_explain[col]):
+                                    val = anomaly_to_explain[col]
+                                    if pd.api.types.is_numeric_dtype(df[col]) and not non_anomaly_data_ai[col].dropna().empty:
+                                        mean_val = non_anomaly_data_ai[col].mean()
+                                        std_val = non_anomaly_data_ai[col].std()
+                                        comparison_str += f"Feature '{col}': Anomaly Value = {val:.2f}, Typical Mean = {mean_val:.2f}, Typical StdDev = {std_val:.2f}\n"
+                                    elif df[col].dtype == 'object' and not non_anomaly_data_ai[col].dropna().empty:
+                                        mode_val = non_anomaly_data_ai[col].mode()[0] if not non_anomaly_data_ai[col].mode().empty else "N/A"
+                                        comparison_str += f"Feature '{col}': Anomaly Value = '{val}', Typical Mode = '{mode_val}'\n"
+
+                            prompt_ai_anomaly = f"""
+You are an expert data analyst specializing in anomaly investigation.
+An anomaly has been detected in the dataset.
+
+Anomalous Data Point (Index: {selected_anomaly_index_ai}):
+{anomaly_details_str}
+
+Comparison with typical data for selected contextual features:
+{comparison_str if comparison_str else "No specific feature comparisons provided beyond the anomaly's own values."}
+
+Based on this information:
+1. Provide a plausible narrative explanation for why this data point is considered anomalous. Consider the combination of feature deviations if applicable.
+2. Suggest 2-3 potential root causes for this anomaly. These could be business-related (e.g., special promotion, data entry error, fraudulent activity, system glitch) or inherent data characteristics.
+3. Recommend 2-3 concrete next steps for further investigation to confirm the nature and cause of this anomaly.
+Be concise, insightful, and actionable. Structure your response clearly with headings for each of the three points.
+"""
+                            try:
+                                model_ai_anomaly = genai.GenerativeModel("gemini-2.0-flash")
+                                response_ai_anomaly = model_ai_anomaly.generate_content(prompt_ai_anomaly)
+                                st.markdown("#### AI Anomaly Investigation Report:")
+                                st.markdown(response_ai_anomaly.text)
+                            except Exception as e:
+                                st.error(f"Gemini API Error for Anomaly Investigation: {str(e)}")
         # --- ADVANCED TOOL 6: Time-Lagged Cross-Correlation (TLCC) ---
         # This was already implemented as NEW TOOL 1, so this section re-uses that logic under the new numbering.
         # For brevity, I'm assuming the existing TLCC implementation is sufficient and just needs to be under this expander.
