@@ -46,6 +46,7 @@ from sklearn.preprocessing import LabelEncoder # For Decision Tree target encodi
 from nltk.sentiment.vader import SentimentIntensityAnalyzer # For Sentiment Analysis
 from lifelines import CoxPHFitter # For Survival Regression
 # New imports for added tools
+import duckdb # For SQL Query Workbench
 from scipy.cluster.hierarchy import dendrogram, linkage # For Hierarchical Clustering
 from sklearn.feature_extraction.text import CountVectorizer # For LDA
 from sklearn.decomposition import LatentDirichletAllocation # For LDA
@@ -3206,6 +3207,84 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
                     st.info("Select Customer ID, Date, and Amount columns for CLV analysis.")
             else:
                 st.info("CLV Profiler requires categorical/numeric ID, date, and numeric amount columns.")
+
+        # --- ADVANCED TOOL 11: SQL Query Workbench ---
+        with st.expander("🔍 ADVANCED TOOL 11: SQL Query Workbench"):
+            st.subheader("Execute SQL Queries on Your DataFrames")
+            st.info("Select a dataset and write SQL queries to analyze it. The DataFrame will be treated as a table within the query context.")
+
+            if not datasets: # Check if datasets dictionary is populated
+                st.warning("Please upload at least one dataset to use the SQL Workbench.")
+            else:
+                sql_selected_dataset_name = st.selectbox(
+                    "Select Dataset for SQL Query",
+                    list(datasets.keys()),
+                    key="sql_workbench_dataset_select"
+                )
+                if sql_selected_dataset_name:
+                    df_to_query_sql = datasets[sql_selected_dataset_name]
+                    # Sanitize dataset name to be a valid SQL table name
+                    table_name_sql = re.sub(r'[^A-Za-z0-9_]+', '_', sql_selected_dataset_name)
+                    if not table_name_sql[0].isalpha() and table_name_sql[0] != '_': # Ensure it starts with letter or underscore
+                        table_name_sql = "_" + table_name_sql
+
+                    query_sql = st.text_area("Enter your SQL Query:", height=150, key="sql_query_input",
+                                             placeholder=f"Example: SELECT * FROM {table_name_sql} WHERE YourColumn > 10 LIMIT 100;")
+
+                    if st.button("🚀 Run SQL Query", key="run_sql_query_button"):
+                        if query_sql:
+                            try:
+                                con = duckdb.connect(database=':memory:', read_only=False)
+                                # Register DataFrame as a table in DuckDB
+                                con.register(table_name_sql, df_to_query_sql)
+                                result_sql_df = con.execute(query_sql).fetchdf()
+                                con.close()
+
+                                st.write("#### SQL Query Results:")
+                                if not result_sql_df.empty:
+                                    st.dataframe(result_sql_df)
+                                else:
+                                    st.info("Query executed successfully, but returned no results.")
+                            except Exception as e:
+                                st.error(f"SQL Query Error: {str(e)}")
+                        else:
+                            st.warning("Please enter an SQL query.")
+
+        # --- ADVANCED TOOL 12: Advanced DataFrame Query Engine ---
+        with st.expander("⚙️ ADVANCED TOOL 12: Advanced DataFrame Query Engine (Pandas Query)"):
+            st.subheader("Filter and Query DataFrames using Pandas Syntax")
+            st.info("Select a dataset and use Pandas `query()` syntax to filter or select data. This is powerful for complex, Excel-like filtering and conditional selections.")
+
+            if not datasets:
+                st.warning("Please upload at least one dataset to use the Query Engine.")
+            else:
+                pq_selected_dataset_name = st.selectbox(
+                    "Select Dataset for Pandas Query",
+                    list(datasets.keys()),
+                    key="pandas_query_dataset_select"
+                )
+                if pq_selected_dataset_name:
+                    df_to_query_pq = datasets[pq_selected_dataset_name]
+
+                    query_pq_string = st.text_area(
+                        "Enter your Pandas Query String:", height=100, key="pandas_query_input",
+                        placeholder="Example: `Amount > 100 and Category == 'Electronics'` or `(`Qty` * `Price`) > 500`"
+                    )
+                    st.caption("Use backticks (`) around column names if they contain spaces or special characters (e.g., ``My Column``). Refer to Pandas `DataFrame.query()` documentation for full syntax.")
+
+                    if st.button("🔍 Run Pandas Query", key="run_pandas_query_button"):
+                        if query_pq_string:
+                            try:
+                                result_pq_df = df_to_query_pq.query(query_pq_string)
+                                st.write("#### Pandas Query Results:")
+                                if not result_pq_df.empty:
+                                    st.dataframe(result_pq_df)
+                                else:
+                                    st.info("Query executed successfully, but returned no results.")
+                            except Exception as e:
+                                st.error(f"Pandas Query Error: {str(e)}")
+                        else:
+                            st.warning("Please enter a Pandas query string.")
 
         # --- ADVANCED TOOL 6: AI-Enhanced Anomaly Investigation ---
         with st.expander("🕵️ ADVANCED TOOL 6: AI-Enhanced Anomaly Investigation"):
