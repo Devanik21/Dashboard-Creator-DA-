@@ -3603,7 +3603,7 @@ NumericColumn1 &lt; 0.4
                             st.warning("Please enter an Excel-like query expression.")
 
         # --- ADVANCED TOOL 14: Enhanced Model Explainability with SHAP ---
-        with st.expander("✨ ADVANCED TOOL 14: Enhanced Model Explainability with SHAP"):
+        with st.expander("✨ ADVANCED TOOL 6: Enhanced Model Explainability with SHAP"):
             st.subheader("Explain Model Predictions with SHAP")
             st.info("Use SHAP (SHapley Additive exPlanations) to understand feature contributions to model predictions. A Random Forest model will be trained for demonstration.")
             if not df.empty:
@@ -3678,7 +3678,7 @@ NumericColumn1 &lt; 0.4
                 st.info("Upload data to perform SHAP analysis.")
 
         # --- ADVANCED TOOL 1: Advanced Time Series Forecasting with Prophet ---
-        with st.expander("📈 ADVANCED TOOL 1: Advanced Time Series Forecasting with Prophet"):
+        with st.expander("📈 ADVANCED TOOL 7: Advanced Time Series Forecasting with Prophet"):
             st.subheader("Forecast Time Series Data using Prophet")
             st.info("Prophet is robust to missing data and shifts in trend, and typically handles seasonality well. Requires a date column and a numeric value column.")
             if date_cols and numeric_cols:
@@ -3724,7 +3724,7 @@ NumericColumn1 &lt; 0.4
                 st.info("Prophet forecasting requires a date column and a numeric value column.")
 
         # --- ADVANCED TOOL 2: Interactive Chart Customization & Drill-Downs ---
-        with st.expander("🎨 ADVANCED TOOL 2: Interactive Chart Customization"):
+        with st.expander("🎨 ADVANCED TOOL 8: Interactive Chart Customization"):
             st.subheader("Build Customized Interactive Charts")
             st.info("Select chart type, axes, and additional options like color, faceting for deeper visual exploration.")
             if not df.empty:
@@ -3779,7 +3779,7 @@ NumericColumn1 &lt; 0.4
                 st.info("Upload data to use the interactive chart builder.")
 
         # --- ADVANCED TOOL 3: Robust Model Evaluation and Comparison Dashboard ---
-        with st.expander("📊 ADVANCED TOOL 3: Model Evaluation & Comparison Dashboard"):
+        with st.expander("📊 ADVANCED TOOL 9: Model Evaluation & Comparison Dashboard"):
             st.subheader("Compare Performance of Trained Models")
             st.info("This tool allows comparison of models trained for the same task (classification or regression). For demonstration, it trains Logistic Regression and Random Forest for a selected binary target.")
             
@@ -3863,7 +3863,7 @@ NumericColumn1 &lt; 0.4
                 st.info("Upload data to use the model evaluation dashboard.")
 
         # --- ADVANCED TOOL 4: Anomaly Investigation & Explanation ---
-        with st.expander("🕵️ ADVANCED TOOL 4: Anomaly Investigation & Explanation"):
+        with st.expander("🕵️ ADVANCED TOOL 10: Anomaly Investigation & Explanation"):
             st.subheader("Investigate and Explain Detected Anomalies")
             st.info("This tool helps explain anomalies detected by the 'Anomaly Detection Dashboard'. First, review feature comparisons, then optionally use AI for a narrative explanation.")
 
@@ -3973,7 +3973,7 @@ Be concise, insightful, and actionable. Structure your response clearly with hea
                         st.info("If you have a Gemini API key, enter it in the sidebar to enable AI-powered narrative explanations for anomalies.")
 
         # --- ADVANCED TOOL 5: Propensity Scoring Model ---
-        with st.expander("🎯 ADVANCED TOOL 5: Propensity Scoring Model"):
+        with st.expander("🎯 ADVANCED TOOL 11: Propensity Scoring Model"):
             st.subheader("Predict Likelihood of a Binary Outcome")
             st.info("Train a Logistic Regression model to predict the probability (propensity score) of a binary outcome (e.g., purchase, churn, conversion).")
             if categorical_cols or numeric_cols: # Need features and a target
@@ -4034,7 +4034,7 @@ Be concise, insightful, and actionable. Structure your response clearly with hea
                 st.info("Propensity Scoring requires columns for target and features.")
 
         # --- ADVANCED TOOL 6: Simplified Treatment Effect Estimation ---
-        with st.expander("💊 ADVANCED TOOL 6: Simplified Treatment Effect Estimation"):
+        with st.expander("💊 ADVANCED TOOL 12: Simplified Treatment Effect Estimation"):
             st.subheader("Estimate Average Treatment Effect (ATE)")
             st.info("This tool provides a simplified estimation of the Average Treatment Effect (ATE) using regression adjustment. Select a binary treatment indicator, a numeric outcome, and optional covariates.")
             if categorical_cols or numeric_cols: # Need treatment, outcome
@@ -4107,7 +4107,7 @@ Be concise, insightful, and actionable. Structure your response clearly with hea
                 st.info("ATE Estimation requires columns for treatment, outcome, and optionally covariates.")
 
         # --- ADVANCED TOOL 7: Key Drivers Analysis ---
-        with st.expander("🔑 ADVANCED TOOL 7: Key Drivers Analysis"):
+        with st.expander("🔑 ADVANCED TOOL 13: Key Drivers Analysis"):
             st.subheader("Identify Key Features Influencing a Target Variable")
             st.info("Train a model (Random Forest or Linear/Logistic Regression) and identify the most influential features (drivers) for a selected target variable.")
             if not df.empty:
@@ -4223,7 +4223,7 @@ Be concise, insightful, and actionable. Structure your response clearly with hea
                 st.info("Upload data to perform Key Drivers Analysis.")
 
         # --- ADVANCED TOOL 8: AI-Powered Segment Narrative Generator ---
-        with st.expander("📝 ADVANCED TOOL 8: AI-Powered Segment Narrative Generator"):
+        with st.expander("📝 ADVANCED TOOL 14: AI-Powered Segment Narrative Generator"):
             st.subheader("Generate Textual Summaries for Data Segments with AI")
             st.info("Select a segment column (e.g., 'Cluster' from K-Means, 'CLV_Segment') and features to describe. AI will generate a narrative for each segment.")
             if gemini_api_key:
