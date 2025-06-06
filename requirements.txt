@@ -3,6 +3,7 @@ streamlit
 nltk
 pandas
 numpy
+duckdb 
 altair
 wordcloud 
 mlxtend
