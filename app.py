@@ -4405,9 +4405,9 @@ Be concise, insightful, and actionable. Structure your response clearly with hea
         with st.expander("🔢 Miscellaneous Tool: Column Value Counter"):
             st.subheader("Count Occurrences of a Value in a Column")
             if not df.empty:
-                col_count = st.selectbox("Select Column", df.columns)
-                value_count = st.text_input("Value to Count")
-                if st.button("Count Value"):
+                col_count = st.selectbox("Select Column", df.columns, key="col_value_counter_col")
+                value_count = st.text_input("Value to Count", key="col_value_counter_val")
+                if st.button("Count Value", key="col_value_counter_btn"):
                     count = (df[col_count] == value_count).sum()
                     st.write(f"Value '{value_count}' appears {count} times in '{col_count}'.")
             else:
