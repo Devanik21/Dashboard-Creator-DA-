@@ -460,31 +460,48 @@ if uploaded_files:
 
         # NEW FEATURE 9: Data comparison dashboard
         if comparison_mode and len(datasets) > 1:
-            with st.expander("🆚 Dataset Comparison Dashboard"):
+            with st.expander("🆚 Dataset Comparison Dashboard", expanded=True): # Keep expanded if conditions met
                 st.subheader("Compare Multiple Datasets")
                 
-                compare_datasets = st.multiselect("Select datasets to compare", 
-                                                list(datasets.keys()), 
-                                                default=list(datasets.keys())[:2])
+                # Ensure default selection is valid and doesn't exceed available datasets
+                num_available_datasets = len(datasets.keys())
+                default_selection_count = min(2, num_available_datasets)
                 
-                if len(compare_datasets) >= 2:
+                compare_datasets_selected = st.multiselect(
+                    "Select datasets to compare",
+                                                list(datasets.keys()), 
+                                                default=list(datasets.keys())[:default_selection_count] if num_available_datasets > 0 else []
+                )
+                
+                if len(compare_datasets_selected) >= 2:
                     comparison_data = []
-                    for name in compare_datasets:
+                    for name in compare_datasets_selected: # Use the selected datasets
                         ds = datasets[name]
+                        # Avoid division by zero if dataset is empty
+                        missing_pct_val = (ds.isnull().sum().sum() / (ds.shape[0] * ds.shape[1]) * 100) if ds.shape[0] > 0 and ds.shape[1] > 0 else 0
+                        
                         comparison_data.append({
                             'Dataset': name,
                             'Rows': ds.shape[0],
                             'Columns': ds.shape[1],
                             'Numeric Cols': len(ds.select_dtypes(include=['number']).columns),
-                            'Missing %': (ds.isnull().sum().sum() / (ds.shape[0] * ds.shape[1]) * 100)
+                            'Missing %': missing_pct_val
                         })
                     
                     comparison_df = pd.DataFrame(comparison_data)
                     st.dataframe(comparison_df)
                     
                     # Visual comparison
-                    fig = px.bar(comparison_df, x='Dataset', y='Rows', title="Dataset Size Comparison")
-                    st.plotly_chart(fig, use_container_width=True)
+                    if not comparison_df.empty:
+                        fig_rows = px.bar(comparison_df, x='Dataset', y='Rows', title="Dataset Size Comparison (Rows)")
+                        st.plotly_chart(fig_rows, use_container_width=True)
+                        
+                        fig_cols = px.bar(comparison_df, x='Dataset', y='Columns', title="Dataset Size Comparison (Columns)", color_discrete_sequence=['orange'])
+                        st.plotly_chart(fig_cols, use_container_width=True)
+                elif len(compare_datasets_selected) < 2: # If mode is on, datasets > 1, but not enough selected in multiselect
+                    st.info("Please select at least two datasets from the dropdown above to compare.")
+        elif comparison_mode and len(datasets) <= 1: # If mode is on, but not enough datasets uploaded
+            st.info("📊 Data Comparison Mode is enabled. Please upload at least two datasets to use this feature.")
 
         # NEW FEATURE 10: Export and reporting system
         with st.expander("📄 Advanced Export & Reporting System"):
