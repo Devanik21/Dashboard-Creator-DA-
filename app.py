@@ -3294,6 +3294,41 @@ LIMIT 5;
                         else:
                             st.warning("Please enter an SQL query.")
 
+        # --- ADVANCED TOOL 13: Excel-like Query Workbench ---
+        with st.expander("📊 ADVANCED TOOL 13: Excel-like Query Workbench", expanded=False):
+            st.subheader("Query DataFrames with Excel-like Expressions")
+            st.info("Select a dataset and use pandas `query()` syntax to filter and analyze it. This is useful for Excel users familiar with formula-based filtering.")
+
+            if not datasets:
+                st.warning("Please upload at least one dataset to use the Excel-like Query Workbench.")
+            else:
+                excel_query_selected_dataset_name = st.selectbox(
+                    "Select Dataset for Excel-like Query",
+                    list(datasets.keys()),
+                    key="excel_query_dataset_select"
+                )
+                if excel_query_selected_dataset_name:
+                    df_to_query_excel = datasets[excel_query_selected_dataset_name]
+
+                    excel_query_expression = st.text_area(
+                        "Enter your Query Expression (pandas `df.query()` syntax):",
+                        height=100,
+                        key="excel_query_expression_input",
+                        placeholder="Example: `YourColumnName > 100 and AnotherColumn == 'SomeValue'` or `(`ColumnA` + `ColumnB`) / 2 > `ColumnC``"
+                    )
+                    st.caption("Use backticks (`) around column names with spaces or special characters. Refer to pandas `DataFrame.query()` documentation for syntax.")
+
+                    if st.button("🔍 Run Excel-like Query", key="run_excel_query_button"):
+                        if excel_query_expression:
+                            try:
+                                result_excel_df = df_to_query_excel.query(excel_query_expression)
+                                st.write("#### Query Results:")
+                                st.dataframe(result_excel_df)
+                            except Exception as e:
+                                st.error(f"Excel-like Query Error: {str(e)}")
+                        else:
+                            st.warning("Please enter an SQL query.")
+
         # --- ADVANCED TOOL 6: Anomaly Investigation & Explanation ---
         with st.expander("🕵️ ADVANCED TOOL 6: Anomaly Investigation & Explanation"):
             st.subheader("Investigate and Explain Detected Anomalies")
