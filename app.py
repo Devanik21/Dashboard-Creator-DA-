@@ -189,6 +189,33 @@ if refresh_interval > 0:
     st.sidebar.info(f"Dashboard will refresh every {refresh_interval} seconds")
 
 # Gemini API Integration
+# Helper function to get common columns
+def get_common_columns(datasets_dict, col_type='all'):
+    if not datasets_dict or len(datasets_dict) < 2: # Needs at least two datasets to find common columns
+        return []
+
+    dfs_to_compare = list(datasets_dict.values())
+    if not dfs_to_compare:
+        return []
+        
+    common_cols_set = set(dfs_to_compare[0].columns)
+    for i in range(1, len(dfs_to_compare)):
+        common_cols_set.intersection_update(dfs_to_compare[i].columns)
+    
+    common_cols_list = sorted(list(common_cols_set))
+
+    if col_type == 'all':
+        return common_cols_list
+    
+    first_df = dfs_to_compare[0]
+    if col_type == 'numeric':
+        return [col for col in common_cols_list if pd.api.types.is_numeric_dtype(first_df[col])]
+    elif col_type == 'categorical':
+        return [col for col in common_cols_list if pd.api.types.is_object_dtype(first_df[col]) or pd.api.types.is_categorical_dtype(first_df[col])]
+    elif col_type == 'datetime':
+        return [col for col in common_cols_list if pd.api.types.is_datetime64_any_dtype(first_df[col])]
+    return []
+
 st.sidebar.header("🤖 AI-Powered Assistance")
 gemini_api_key = st.sidebar.text_input("Gemini API Key", type="password")
 if gemini_api_key:
@@ -461,8 +488,6 @@ if uploaded_files:
         # NEW FEATURE 9: Data comparison dashboard
         if comparison_mode and len(datasets) > 1:
             with st.expander("🆚 Dataset Comparison Dashboard", expanded=True): # Keep expanded if conditions met
-                st.subheader("Compare Multiple Datasets")
-                
                 # Ensure default selection is valid and doesn't exceed available datasets
                 num_available_datasets = len(datasets.keys())
                 default_selection_count = min(2, num_available_datasets)
@@ -470,34 +495,213 @@ if uploaded_files:
                 compare_datasets_selected = st.multiselect(
                     "Select datasets to compare",
                                                 list(datasets.keys()), 
-                                                default=list(datasets.keys())[:default_selection_count] if num_available_datasets > 0 else []
+                                                default=list(datasets.keys())[:default_selection_count] if num_available_datasets > 0 else [],
+                                                key="compare_multiselect"
                 )
                 
                 if len(compare_datasets_selected) >= 2:
-                    comparison_data = []
-                    for name in compare_datasets_selected: # Use the selected datasets
-                        ds = datasets[name]
-                        # Avoid division by zero if dataset is empty
-                        missing_pct_val = (ds.isnull().sum().sum() / (ds.shape[0] * ds.shape[1]) * 100) if ds.shape[0] > 0 and ds.shape[1] > 0 else 0
-                        
-                        comparison_data.append({
-                            'Dataset': name,
-                            'Rows': ds.shape[0],
-                            'Columns': ds.shape[1],
-                            'Numeric Cols': len(ds.select_dtypes(include=['number']).columns),
-                            'Missing %': missing_pct_val
-                        })
+                    selected_dfs_dict = {name: datasets[name] for name in compare_datasets_selected}
                     
-                    comparison_df = pd.DataFrame(comparison_data)
-                    st.dataframe(comparison_df)
-                    
-                    # Visual comparison
-                    if not comparison_df.empty:
-                        fig_rows = px.bar(comparison_df, x='Dataset', y='Rows', title="Dataset Size Comparison (Rows)")
-                        st.plotly_chart(fig_rows, use_container_width=True)
+                    tab_overview, tab_schema, tab_numeric, tab_categorical, tab_quality = st.tabs([
+                        "📊 Overview", "🧬 Schema Comparison", "🔢 Numeric Deep Dive", 
+                        "🔠 Categorical Deep Dive", "📉 Data Quality"
+                    ])
+
+                    with tab_overview:
+                        st.subheader("Basic Statistics Overview")
+                        overview_data = []
+                        for name, ds in selected_dfs_dict.items():
+                            missing_pct_val = (ds.isnull().sum().sum() / (ds.shape[0] * ds.shape[1]) * 100) if ds.shape[0] > 0 and ds.shape[1] > 0 else 0
+                            overview_data.append({
+                                'Dataset': name,
+                                'Rows': ds.shape[0],
+                                'Columns': ds.shape[1],
+                                'Numeric Cols': len(ds.select_dtypes(include=['number']).columns),
+                                'Categorical Cols': len(ds.select_dtypes(include=['object', 'category']).columns),
+                                'Datetime Cols': len(ds.select_dtypes(include=['datetime']).columns),
+                                'Total Missing %': f"{missing_pct_val:.2f}%",
+                                'Memory Usage (MB)': f"{ds.memory_usage(deep=True).sum() / (1024*1024):.2f}", # Feature 1
+                                'Duplicate Rows': ds.duplicated().sum() # Feature 2
+                            })
+                        overview_df = pd.DataFrame(overview_data)
+                        st.dataframe(overview_df)
+
+                        if not overview_df.empty:
+                            fig_rows_comp = px.bar(overview_df, x='Dataset', y='Rows', title="Dataset Size Comparison (Rows)", color_discrete_sequence=[custom_color])
+                            st.plotly_chart(fig_rows_comp, use_container_width=True)
+                            fig_cols_comp = px.bar(overview_df, x='Dataset', y='Columns', title="Dataset Size Comparison (Columns)", color_discrete_sequence=[px.colors.qualitative.Plotly[1]])
+                            st.plotly_chart(fig_cols_comp, use_container_width=True)
+
+                    with tab_schema:
+                        st.subheader("Schema & Structure Comparison")
                         
-                        fig_cols = px.bar(comparison_df, x='Dataset', y='Columns', title="Dataset Size Comparison (Columns)", color_discrete_sequence=['orange'])
-                        st.plotly_chart(fig_cols, use_container_width=True)
+                        # Feature 3: Common Columns
+                        common_cols_schema = get_common_columns(selected_dfs_dict, 'all')
+                        st.markdown("#### Common Columns Across All Selected Datasets")
+                        if common_cols_schema:
+                            st.write(", ".join(common_cols_schema) if common_cols_schema else "None")
+                        else:
+                            st.info("No columns are common across all selected datasets.")
+
+                        # Feature 4: Unique Columns
+                        st.markdown("#### Unique Columns per Dataset")
+                        all_cols_in_selection = set()
+                        for ds_name, ds_df in selected_dfs_dict.items():
+                            all_cols_in_selection.update(ds_df.columns)
+                        
+                        for ds_name, ds_df in selected_dfs_dict.items():
+                            other_cols = set()
+                            for other_name, other_df in selected_dfs_dict.items():
+                                if ds_name != other_name:
+                                    other_cols.update(other_df.columns)
+                            unique_to_ds = set(ds_df.columns) - other_cols
+                            if unique_to_ds:
+                                st.write(f"**{ds_name}:** {', '.join(sorted(list(unique_to_ds)))}")
+                            else:
+                                st.write(f"**{ds_name}:** No columns unique to this dataset compared to others in selection.")
+                        
+                        # Feature 5: Data Type Mismatches for Common Columns
+                        if common_cols_schema:
+                            st.markdown("#### Data Type Mismatches for Common Columns")
+                            mismatch_info = []
+                            first_ds_name = list(selected_dfs_dict.keys())[0]
+                            first_ds_df = selected_dfs_dict[first_ds_name]
+                            
+                            for col_name in common_cols_schema:
+                                base_dtype = str(first_ds_df[col_name].dtype)
+                                for ds_name_comp, ds_df_comp in selected_dfs_dict.items():
+                                    if ds_name_comp == first_ds_name:
+                                        continue
+                                    current_dtype = str(ds_df_comp[col_name].dtype)
+                                    if base_dtype != current_dtype:
+                                        mismatch_info.append({
+                                            'Column': col_name,
+                                            first_ds_name: base_dtype,
+                                            ds_name_comp: current_dtype,
+                                            'Status': 'Mismatch'
+                                        })
+                            if mismatch_info:
+                                st.dataframe(pd.DataFrame(mismatch_info))
+                            else:
+                                st.info("No data type mismatches found for common columns across the selected datasets.")
+
+                    with tab_numeric:
+                        st.subheader("Numeric Column Deep Dive")
+                        common_numeric_cols = get_common_columns(selected_dfs_dict, 'numeric')
+                        if not common_numeric_cols:
+                            st.info("No common numeric columns found across selected datasets.")
+                        else:
+                            selected_num_col_compare = st.selectbox("Select a common numeric column to analyze:", common_numeric_cols, key="num_col_compare_select")
+                            if selected_num_col_compare:
+                                # Feature 6: Side-by-side descriptive statistics
+                                st.markdown(f"#### Descriptive Statistics for '{selected_num_col_compare}'")
+                                desc_stats_list = []
+                                for ds_name, ds_df in selected_dfs_dict.items():
+                                    if selected_num_col_compare in ds_df.columns:
+                                        desc_stats_list.append(ds_df[selected_num_col_compare].describe().rename(ds_name))
+                                if desc_stats_list:
+                                    st.dataframe(pd.concat(desc_stats_list, axis=1))
+                                
+                                # Feature 7: Visual comparison (overlaid histograms or box plots)
+                                st.markdown(f"#### Visual Comparison for '{selected_num_col_compare}'")
+                                plot_type_num = st.radio("Plot Type:", ["Overlaid Histograms", "Box Plots"], key="num_plot_type_radio")
+                                
+                                combined_num_data = pd.DataFrame()
+                                for ds_name, ds_df in selected_dfs_dict.items():
+                                    if selected_num_col_compare in ds_df.columns:
+                                        temp_df = pd.DataFrame({selected_num_col_compare: ds_df[selected_num_col_compare], 'Dataset': ds_name})
+                                        combined_num_data = pd.concat([combined_num_data, temp_df], ignore_index=True)
+
+                                if not combined_num_data.empty:
+                                    if plot_type_num == "Overlaid Histograms":
+                                        fig_num_hist = px.histogram(combined_num_data, x=selected_num_col_compare, color='Dataset', 
+                                                                    barmode='overlay', marginal='rug', opacity=0.7,
+                                                                    title=f"Distribution of '{selected_num_col_compare}' by Dataset")
+                                        st.plotly_chart(fig_num_hist, use_container_width=True)
+                                    else: # Box Plots
+                                        fig_num_box = px.box(combined_num_data, y=selected_num_col_compare, color='Dataset',
+                                                             title=f"Box Plot of '{selected_num_col_compare}' by Dataset")
+                                        st.plotly_chart(fig_num_box, use_container_width=True)
+
+                                # Feature 8: Statistical test (T-test/Mann-Whitney U) - for first two selected datasets
+                                if len(selected_dfs_dict) >= 2:
+                                    st.markdown(f"#### Statistical Test for Difference in '{selected_num_col_compare}'")
+                                    ds_names_for_test = list(selected_dfs_dict.keys())[:2]
+                                    data1_test = selected_dfs_dict[ds_names_for_test[0]][selected_num_col_compare].dropna()
+                                    data2_test = selected_dfs_dict[ds_names_for_test[1]][selected_num_col_compare].dropna()
+
+                                    if len(data1_test) > 1 and len(data2_test) > 1: # Need at least 2 samples for these tests
+                                        test_choice = st.radio("Choose Test:", ["T-test (parametric)", "Mann-Whitney U (non-parametric)"], key="num_stat_test_choice")
+                                        st.caption(f"Comparing '{ds_names_for_test[0]}' and '{ds_names_for_test[1]}'. For more than 2 datasets, only the first two are compared here.")
+                                        
+                                        alpha_stat_test = 0.05 # Significance level
+                                        if test_choice == "T-test (parametric)":
+                                            stat, p_value = stats.ttest_ind(data1_test, data2_test, equal_var=False) # Welch's t-test
+                                            st.write(f"**T-test results:** Statistic = {stat:.3f}, P-value = {p_value:.4f}")
+                                        else: # Mann-Whitney U
+                                            stat, p_value = stats.mannwhitneyu(data1_test, data2_test, alternative='two-sided')
+                                            st.write(f"**Mann-Whitney U test results:** Statistic = {stat:.3f}, P-value = {p_value:.4f}")
+                                        
+                                        if p_value < alpha_stat_test:
+                                            st.success(f"Significant difference found (p < {alpha_stat_test}).")
+                                        else:
+                                            st.info(f"No significant difference found (p >= {alpha_stat_test}).")
+                                    else:
+                                        st.warning("Not enough data in one or both datasets for statistical testing on this column.")
+
+                    with tab_categorical:
+                        st.subheader("Categorical Column Deep Dive")
+                        common_categorical_cols = get_common_columns(selected_dfs_dict, 'categorical')
+                        if not common_categorical_cols:
+                            st.info("No common categorical columns found across selected datasets.")
+                        else:
+                            selected_cat_col_compare = st.selectbox("Select a common categorical column to analyze:", common_categorical_cols, key="cat_col_compare_select")
+                            if selected_cat_col_compare:
+                                # Feature 9: Side-by-side value counts & visual
+                                st.markdown(f"#### Value Distribution for '{selected_cat_col_compare}'")
+                                all_cat_data_for_plot = pd.DataFrame()
+                                for ds_name, ds_df in selected_dfs_dict.items():
+                                    if selected_cat_col_compare in ds_df.columns:
+                                        counts = ds_df[selected_cat_col_compare].value_counts(normalize=True).mul(100).rename('Percentage').reset_index()
+                                        counts.columns = [selected_cat_col_compare, 'Percentage']
+                                        counts['Dataset'] = ds_name
+                                        all_cat_data_for_plot = pd.concat([all_cat_data_for_plot, counts])
+                                
+                                if not all_cat_data_for_plot.empty:
+                                    fig_cat_dist = px.bar(all_cat_data_for_plot, x=selected_cat_col_compare, y='Percentage', color='Dataset', 
+                                                          barmode='group', title=f"Distribution of '{selected_cat_col_compare}' by Dataset")
+                                    st.plotly_chart(fig_cat_dist, use_container_width=True)
+                                    
+                                    st.markdown("##### Value Counts (Top 10 per Dataset)")
+                                    for ds_name, ds_df in selected_dfs_dict.items():
+                                        if selected_cat_col_compare in ds_df.columns:
+                                            st.write(f"**{ds_name}:**")
+                                            st.dataframe(ds_df[selected_cat_col_compare].value_counts().head(10).rename("Count"))
+
+                    with tab_quality:
+                        st.subheader("Data Quality Comparison")
+                        # Feature 10: Detailed Missing Values per common column
+                        st.markdown("#### Missing Values per Common Column")
+                        common_cols_quality = get_common_columns(selected_dfs_dict, 'all')
+                        if not common_cols_quality:
+                            st.info("No common columns to compare missing values.")
+                        else:
+                            missing_data_list = []
+                            for ds_name, ds_df in selected_dfs_dict.items():
+                                for col_name in common_cols_quality:
+                                    if col_name in ds_df.columns:
+                                        missing_count = ds_df[col_name].isnull().sum()
+                                        missing_pct = (missing_count / len(ds_df)) * 100 if len(ds_df) > 0 else 0
+                                        missing_data_list.append({'Dataset': ds_name, 'Column': col_name, 'MissingPercentage': missing_pct})
+                            
+                            if missing_data_list:
+                                missing_df_plot = pd.DataFrame(missing_data_list)
+                                fig_missing_comp = px.bar(missing_df_plot, x='Column', y='MissingPercentage', color='Dataset',
+                                                          barmode='group', title="Missing Value Percentage per Common Column by Dataset")
+                                st.plotly_chart(fig_missing_comp, use_container_width=True)
+                            else:
+                                st.info("No data to plot for missing values comparison.")
+
                 elif len(compare_datasets_selected) < 2: # If mode is on, datasets > 1, but not enough selected in multiselect
                     st.info("Please select at least two datasets from the dropdown above to compare.")
         elif comparison_mode and len(datasets) <= 1: # If mode is on, but not enough datasets uploaded
