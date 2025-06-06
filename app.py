@@ -3841,21 +3841,7 @@ Be concise, insightful, and actionable. Structure your response clearly with hea
                                  f"{theme_name.lower().replace(' ', '_')}_theme.json",
                                  key="theme_download_button")
 
-        # --- ADVANCED TOOL 12: SQL Query Workbench --- (Was Advanced Tool 11)
-        # This was already correctly categorized and named, so it just gets renumbered.
-        # The existing code for SQL Query Workbench will now effectively be "ADVANCED TOOL 12"
-        # due to the insertion of the merged Anomaly Investigation tool at position 6.
-        # No code change needed here other than awareness of its new effective number.
 
-        # The SQL Query Workbench expander follows...
-        # (No changes needed to its content, just its effective number in the sequence)
-        with st.expander("🗃️ ADVANCED TOOL 12: SQL Query Workbench (Data Interaction Category)", expanded=True): # Renumbered
-            st.subheader("Execute SQL Queries on Your DataFrames")
-            st.info("Select a dataset and write SQL queries to analyze it. The DataFrame will be treated as a table within the query context.")
-
-else:
-    st.info("📂 Please upload your data files to begin exploring! 🚀")
-    
     # Sample data generator for testing
     if st.button("🎲 Generate Sample Data & Explore Features"):
         sample_data = {
@@ -3887,4 +3873,3 @@ with st.sidebar:
 
 
 st.image("d4.jpg", caption="Data Analysis meets AI meets Elegance.", use_container_width=True)
-
