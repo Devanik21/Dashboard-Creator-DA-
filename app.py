@@ -3323,34 +3323,34 @@ LIMIT 5;
                     <details>
                         <summary style="cursor:pointer; color: #A0AEC0; font-weight: 600;">💡 Excel-like Query Examples (click to expand)</summary>
                         <div style="padding-top: 10px;">
-                        Remember to replace column names with those from your selected dataset (<code>{excel_query_selected_dataset_name}</code>).
+                        Remember to replace placeholder column names (e.g., <code>NumericColumn1</code>, <code>StringColumnA</code>, <code>`Column With Spaces`</code>) with actual column names from your selected dataset (<code>{excel_query_selected_dataset_name}</code>).
                         <br><br>
                         <strong>⚠️ Examples that might require data type preprocessing (e.g., if a column is text instead of numeric):</strong>
                         <pre><code class="language-plaintext">
-# If 'Weight' is a string/object type, this will error. Ensure it's numeric.
-Weight &lt; 0.4
+# If 'NumericColumn1' is a string/object type, this will error. Ensure it's numeric.
+NumericColumn1 &lt; 0.4
 
-# If 'TP' (Trading Price) is a string/object, this will error. Ensure it's numeric.
-TP &gt; 500
+# If 'NumericColumn2' is a string/object, this will error. Ensure it's numeric.
+NumericColumn2 &gt; 500
                         </code></pre>
                         <p style="color: #FFA500;">If you encounter errors like "'&lt;' not supported between instances of 'str' and 'float'", use the "Smart Data Type Detection & Conversion" tool to convert the relevant column to a numeric type.</p>
 
                         <strong>✅ Examples that generally work well (especially with correct data types and backticks for special column names):</strong>
                         <pre><code class="language-plaintext">
 # Simple string comparison
-Category == 'Kurta'
+StringColumnA == 'SomeValue'
 
 # Numeric comparison with backticks for column names with spaces
-`Final MRP Old` &gt; 2000
+`Numeric Column With Spaces` &gt; 2000
 
 # Comparing two columns (ensure both are numeric)
-`Myntra MRP` &lt;= `Ajio MRP`
+`NumericColumnA` &lt;= `NumericColumnB`
 
 # Combining conditions
-`Sales Channel` == 'Amazon.in' and Amount &gt; 1000
+`CategoricalColumnX` == 'CategoryX_ValueY' and NumericColumn3 &gt; 1000
 
 # Using string methods (ensure the column is string type)
-`Style Id`.str.startswith('Os206')
+`TextColumn`.str.startswith('Prefix')
                         </code></pre>
                         Refer to the <a href="https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.query.html" target="_blank">pandas DataFrame.query() documentation</a> for more syntax details. Use backticks (`) around column names with spaces or special characters (e.g., `My Column-Name`).
                         </div>
