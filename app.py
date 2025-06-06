@@ -3231,6 +3231,45 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
                     query_sql = st.text_area("Enter your SQL Query:", height=150, key="sql_query_input",
                                              placeholder=f"Example: SELECT * FROM {table_name_sql} WHERE YourColumn > 10 LIMIT 100;")
 
+                    with st.expander("💡 SQL Query Examples (click to expand)", expanded=False):
+                        st.markdown(f"""
+                        Replace `YourTable` with `{table_name_sql}` (or the name of your selected table) and adjust column names as needed.
+                        
+                        **🌟 1. Top 5 Most Viewed Movies**
+                        ```sql
+                        SELECT title, views_millions
+                        FROM {table_name_sql}
+                        WHERE type = 'Movie' -- Assuming a 'type' column exists
+                        ORDER BY views_millions DESC
+                        LIMIT 5;
+                        ```
+                        **📊 2. Average Budget by Decade and Type**
+                        ```sql
+                        SELECT decade, type, AVG(budget_millions) AS avg_budget
+                        FROM {table_name_sql} -- Assuming 'decade', 'type', 'budget_millions' columns
+                        GROUP BY decade, type
+                        ORDER BY avg_budget DESC;
+                        ```
+                        **🏆 3. Directors with Most Award-Winning Shows**
+                        ```sql
+                        SELECT director, SUM(awards_won) AS total_awards
+                        FROM {table_name_sql} -- Assuming 'director', 'awards_won' columns
+                        GROUP BY director
+                        ORDER BY total_awards DESC
+                        LIMIT 10;
+                        ```
+                        **🎬 4. Top 5 Genres with Highest Average Views**
+                        ```sql
+                        SELECT listed_in, AVG(views_millions) AS avg_views
+                        FROM {table_name_sql} -- Assuming 'listed_in', 'views_millions' columns
+                        GROUP BY listed_in
+                        ORDER BY avg_views DESC
+                        LIMIT 5;
+                        ```
+                        And many more! (See full list for other examples like most popular country, high budget movies, shows per language, sound mix types, nomination analysis, multi-genre shows).
+                        Remember to adapt column names like `title`, `views_millions`, `type`, `budget_millions`, `director`, `awards_won`, `listed_in`, `country`, `language`, `sound_mix`, `nomination_for_best_picture` to match your dataset.
+                        """)
+
                     if st.button("🚀 Run SQL Query", key="run_sql_query_button"):
                         if query_sql:
                             try:
