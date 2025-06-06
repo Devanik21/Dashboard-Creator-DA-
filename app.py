@@ -3355,7 +3355,7 @@ LIMIT 5;
                     if st.button("🔍 Run Pandas Query", key="run_pandas_query_button"):
                         if query_pq_string:
                             try:
-                                result_pq_df = df_to_query_pq.query(query_pq_string)
+                                result_pq_df = df_to_query_pq.query(query_pq_string, engine='python')
                                 st.write("#### Pandas Query Results:")
                                 if not result_pq_df.empty:
                                     st.dataframe(result_pq_df)
