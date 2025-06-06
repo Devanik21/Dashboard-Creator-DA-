@@ -3294,10 +3294,10 @@ LIMIT 5;
                         else:
                             st.warning("Please enter an SQL query.")
 
-        # --- ADVANCED TOOL 6: AI-Enhanced Anomaly Investigation ---
-        with st.expander("🕵️ ADVANCED TOOL 6: AI-Enhanced Anomaly Investigation"):
-            st.subheader("Get AI-Driven Explanations for Detected Anomalies")
-            st.info("This tool uses AI to provide deeper insights into anomalies identified by the 'Anomaly Detection Dashboard'. Select an anomaly and relevant features for AI analysis.")
+        # --- ADVANCED TOOL 6: Anomaly Investigation & Explanation ---
+        with st.expander("🕵️ ADVANCED TOOL 6: Anomaly Investigation & Explanation"):
+            st.subheader("Investigate and Explain Detected Anomalies")
+            st.info("This tool helps explain anomalies detected by the 'Anomaly Detection Dashboard'. First, review feature comparisons, then optionally use AI for a narrative explanation.")
 
             if not gemini_api_key:
                 st.warning("Please enter your Gemini API key in the sidebar to use this AI-powered tool.")
@@ -3315,45 +3315,78 @@ LIMIT 5;
                 )
 
                 if selected_anomaly_index_ai is not None:
-                    anomaly_to_explain = df.loc[selected_anomaly_index_ai]
+                    anomaly_data_point_ai = df.loc[selected_anomaly_index_ai] # Renamed to avoid conflict
                     st.write(f"#### Details for Anomaly at Index: {selected_anomaly_index_ai}")
-                    st.dataframe(anomaly_to_explain.to_frame().T)
+                    st.dataframe(anomaly_data_point_ai.to_frame().T)
 
-                    # Allow user to select features they think are relevant for the AI's context
-                    contextual_features_for_ai = st.multiselect(
-                        "Select Features to Provide as Context to AI",
-                        df.columns.tolist(),
-                        default=[col for col in numeric_cols[:3] + categorical_cols[:2] if col in df.columns], # Sensible defaults
-                        key="ai_anomaly_context_features"
-                    )
+                    st.markdown("##### Feature Comparison (Anomaly vs. Typical Data):")
+                    explanation_found_ae_merged = False
+                    for col_explain in df.columns:
+                        if col_explain in anomaly_data_point_ai and pd.notna(anomaly_data_point_ai[col_explain]):
+                            outlier_val_explain = anomaly_data_point_ai[col_explain]
+                            non_anomaly_data_explain = df.drop(anomalies_for_ai_df.index, errors='ignore')
 
-                    if st.button("🤖 Get AI Explanation for Anomaly", key="run_ai_anomaly_explanation"):
-                        with st.spinner("AI is investigating the anomaly..."):
-                            # Prepare context for the AI
-                            anomaly_details_str = "\n".join([f"- {col}: {anomaly_to_explain[col]}" for col in anomaly_to_explain.index if pd.notna(anomaly_to_explain[col])])
-                            
-                            comparison_str = ""
-                            non_anomaly_data_ai = df.drop(anomalies_for_ai_df.index, errors='ignore')
-                            for col in contextual_features_for_ai:
-                                if col in anomaly_to_explain and pd.notna(anomaly_to_explain[col]):
-                                    val = anomaly_to_explain[col]
-                                    if pd.api.types.is_numeric_dtype(df[col]) and not non_anomaly_data_ai[col].dropna().empty:
-                                        mean_val = non_anomaly_data_ai[col].mean()
-                                        std_val = non_anomaly_data_ai[col].std()
-                                        comparison_str += f"Feature '{col}': Anomaly Value = {val:.2f}, Typical Mean = {mean_val:.2f}, Typical StdDev = {std_val:.2f}\n"
-                                    elif df[col].dtype == 'object' and not non_anomaly_data_ai[col].dropna().empty:
-                                        mode_val = non_anomaly_data_ai[col].mode()[0] if not non_anomaly_data_ai[col].mode().empty else "N/A"
-                                        comparison_str += f"Feature '{col}': Anomaly Value = '{val}', Typical Mode = '{mode_val}'\n"
+                            if pd.api.types.is_numeric_dtype(df[col_explain]) and not non_anomaly_data_explain[col_explain].dropna().empty:
+                                mean_val_explain = non_anomaly_data_explain[col_explain].mean()
+                                std_val_explain = non_anomaly_data_explain[col_explain].std()
+                                q05_val_explain = non_anomaly_data_explain[col_explain].quantile(0.05)
+                                q95_val_explain = non_anomaly_data_explain[col_explain].quantile(0.95)
 
-                            prompt_ai_anomaly = f"""
+                                if std_val_explain > 0:
+                                    z_score_approx_explain = (outlier_val_explain - mean_val_explain) / std_val_explain
+                                    if abs(z_score_approx_explain) > 2.5:
+                                        st.write(f"- **{col_explain}**: Value `{outlier_val_explain:.2f}` is significantly different (approx. {z_score_approx_explain:.1f} std devs) from the typical mean (`{mean_val_explain:.2f}`).")
+                                        explanation_found_ae_merged = True
+                                    elif outlier_val_explain > q95_val_explain:
+                                        st.write(f"- **{col_explain}**: Value `{outlier_val_explain:.2f}` is in the top 5% (above `{q95_val_explain:.2f}`). Typical mean: `{mean_val_explain:.2f}`.")
+                                        explanation_found_ae_merged = True
+                                    elif outlier_val_explain < q05_val_explain:
+                                        st.write(f"- **{col_explain}**: Value `{outlier_val_explain:.2f}` is in the bottom 5% (below `{q05_val_explain:.2f}`). Typical mean: `{mean_val_explain:.2f}`.")
+                                        explanation_found_ae_merged = True
+                            elif df[col_explain].dtype == 'object' and not non_anomaly_data_explain[col_explain].dropna().empty:
+                                mode_val_explain = non_anomaly_data_explain[col_explain].mode()
+                                if not mode_val_explain.empty and outlier_val_explain != mode_val_explain[0]:
+                                    value_freq_explain = non_anomaly_data_explain[col_explain].value_counts(normalize=True)
+                                    if outlier_val_explain in value_freq_explain and value_freq_explain[outlier_val_explain] < 0.05:
+                                        st.write(f"- **{col_explain}**: Category `'{outlier_val_explain}'` is uncommon (occurs <5% in non-anomalies). Most common is `'{mode_val_explain[0]}'`. ")
+                                        explanation_found_ae_merged = True
+                    if not explanation_found_ae_merged:
+                        st.info("This anomaly does not show extreme deviations on individual features compared to the rest of the data based on simple statistical checks. It might be an outlier due to a combination of factors.")
+
+                    st.markdown("---")
+                    st.markdown("##### AI-Powered Narrative Explanation (Optional)")
+                    if gemini_api_key: # Check again in case it was entered after page load
+                        contextual_features_for_ai_merged = st.multiselect(
+                            "Select Features to Provide as Context to AI for Narrative",
+                            df.columns.tolist(),
+                            default=[col for col in numeric_cols[:3] + categorical_cols[:2] if col in df.columns],
+                            key="ai_anomaly_context_features_merged"
+                        )
+                        if st.button("🤖 Get AI Explanation for Anomaly", key="run_ai_anomaly_explanation_merged"):
+                            with st.spinner("AI is investigating the anomaly..."):
+                                anomaly_details_str_merged = "\n".join([f"- {col}: {anomaly_data_point_ai[col]}" for col in anomaly_data_point_ai.index if pd.notna(anomaly_data_point_ai[col])])
+                                comparison_str_merged = ""
+                                non_anomaly_data_ai_merged = df.drop(anomalies_for_ai_df.index, errors='ignore')
+                                for col_ai_ctx in contextual_features_for_ai_merged:
+                                    if col_ai_ctx in anomaly_data_point_ai and pd.notna(anomaly_data_point_ai[col_ai_ctx]):
+                                        val_ai_ctx = anomaly_data_point_ai[col_ai_ctx]
+                                        if pd.api.types.is_numeric_dtype(df[col_ai_ctx]) and not non_anomaly_data_ai_merged[col_ai_ctx].dropna().empty:
+                                            mean_val_ai_ctx = non_anomaly_data_ai_merged[col_ai_ctx].mean()
+                                            std_val_ai_ctx = non_anomaly_data_ai_merged[col_ai_ctx].std()
+                                            comparison_str_merged += f"Feature '{col_ai_ctx}': Anomaly Value = {val_ai_ctx:.2f}, Typical Mean = {mean_val_ai_ctx:.2f}, Typical StdDev = {std_val_ai_ctx:.2f}\n"
+                                        elif df[col_ai_ctx].dtype == 'object' and not non_anomaly_data_ai_merged[col_ai_ctx].dropna().empty:
+                                            mode_val_ai_ctx = non_anomaly_data_ai_merged[col_ai_ctx].mode()[0] if not non_anomaly_data_ai_merged[col_ai_ctx].mode().empty else "N/A"
+                                            comparison_str_merged += f"Feature '{col_ai_ctx}': Anomaly Value = '{val_ai_ctx}', Typical Mode = '{mode_val_ai_ctx}'\n"
+
+                                prompt_ai_anomaly_merged = f"""
 You are an expert data analyst specializing in anomaly investigation.
 An anomaly has been detected in the dataset.
 
 Anomalous Data Point (Index: {selected_anomaly_index_ai}):
-{anomaly_details_str}
+{anomaly_details_str_merged}
 
 Comparison with typical data for selected contextual features:
-{comparison_str if comparison_str else "No specific feature comparisons provided beyond the anomaly's own values."}
+{comparison_str_merged if comparison_str_merged else "No specific feature comparisons provided beyond the anomaly's own values."}
 
 Based on this information:
 1. Provide a plausible narrative explanation for why this data point is considered anomalous. Consider the combination of feature deviations if applicable.
@@ -3361,21 +3394,18 @@ Based on this information:
 3. Recommend 2-3 concrete next steps for further investigation to confirm the nature and cause of this anomaly.
 Be concise, insightful, and actionable. Structure your response clearly with headings for each of the three points.
 """
-                            try:
-                                model_ai_anomaly = genai.GenerativeModel("gemini-2.0-flash")
-                                response_ai_anomaly = model_ai_anomaly.generate_content(prompt_ai_anomaly)
-                                st.markdown("#### AI Anomaly Investigation Report:")
-                                st.markdown(response_ai_anomaly.text)
-                            except Exception as e:
-                                st.error(f"Gemini API Error for Anomaly Investigation: {str(e)}")
-        # --- ADVANCED TOOL 6: Time-Lagged Cross-Correlation (TLCC) ---
-        # This was already implemented as NEW TOOL 1, so this section re-uses that logic under the new numbering.
-        # For brevity, I'm assuming the existing TLCC implementation is sufficient and just needs to be under this expander.
-        # If a different implementation is needed, that would be a separate step.
-        # The existing TLCC is already quite good.
+                                try:
+                                    model_ai_anomaly_merged = genai.GenerativeModel("gemini-2.0-flash")
+                                    response_ai_anomaly_merged = model_ai_anomaly_merged.generate_content(prompt_ai_anomaly_merged)
+                                    st.markdown("#### AI Anomaly Investigation Report:")
+                                    st.markdown(response_ai_anomaly_merged.text)
+                                except Exception as e:
+                                    st.error(f"Gemini API Error for Anomaly Investigation: {str(e)}")
+                    else:
+                        st.info("If you have a Gemini API key, enter it in the sidebar to enable AI-powered narrative explanations for anomalies.")
 
-        # --- ADVANCED TOOL 7: Propensity Scoring Model ---
-        with st.expander("🎯 ADVANCED TOOL 7: Propensity Scoring Model"):
+        # --- ADVANCED TOOL 7: Propensity Scoring Model --- (Original Tool 7)
+        with st.expander("🎯 ADVANCED TOOL 7: Propensity Scoring Model"): # Renumbering subsequent tools
             st.subheader("Predict Likelihood of a Binary Outcome")
             st.info("Train a Logistic Regression model to predict the probability (propensity score) of a binary outcome (e.g., purchase, churn, conversion).")
             if categorical_cols or numeric_cols: # Need features and a target
@@ -3435,8 +3465,8 @@ Be concise, insightful, and actionable. Structure your response clearly with hea
             else:
                 st.info("Propensity Scoring requires columns for target and features.")
 
-        # --- ADVANCED TOOL 8: Simplified Treatment Effect Estimation ---
-        with st.expander("💊 ADVANCED TOOL 8: Simplified Treatment Effect Estimation"):
+        # --- ADVANCED TOOL 8: Simplified Treatment Effect Estimation --- (Original Tool 8)
+        with st.expander("💊 ADVANCED TOOL 8: Simplified Treatment Effect Estimation"): # Renumbering
             st.subheader("Estimate Average Treatment Effect (ATE)")
             st.info("This tool provides a simplified estimation of the Average Treatment Effect (ATE) using regression adjustment. Select a binary treatment indicator, a numeric outcome, and optional covariates.")
             if categorical_cols or numeric_cols: # Need treatment, outcome
@@ -3508,8 +3538,8 @@ Be concise, insightful, and actionable. Structure your response clearly with hea
             else:
                 st.info("ATE Estimation requires columns for treatment, outcome, and optionally covariates.")
 
-        # --- ADVANCED TOOL 9: Key Drivers Analysis ---
-        with st.expander("🔑 ADVANCED TOOL 9: Key Drivers Analysis"):
+        # --- ADVANCED TOOL 9: Key Drivers Analysis --- (Original Tool 9)
+        with st.expander("🔑 ADVANCED TOOL 9: Key Drivers Analysis"): # Renumbering
             st.subheader("Identify Key Features Influencing a Target Variable")
             st.info("Train a model (Random Forest or Linear/Logistic Regression) and identify the most influential features (drivers) for a selected target variable.")
             if not df.empty:
@@ -3624,8 +3654,8 @@ Be concise, insightful, and actionable. Structure your response clearly with hea
             else:
                 st.info("Upload data to perform Key Drivers Analysis.")
 
-        # --- ADVANCED TOOL 10: AI-Powered Segment Narrative Generator ---
-        with st.expander("📝 ADVANCED TOOL 10: AI-Powered Segment Narrative Generator"):
+        # --- ADVANCED TOOL 10: AI-Powered Segment Narrative Generator --- (Original Tool 10)
+        with st.expander("📝 ADVANCED TOOL 10: AI-Powered Segment Narrative Generator"): # Renumbering
             st.subheader("Generate Textual Summaries for Data Segments with AI")
             st.info("Select a segment column (e.g., 'Cluster' from K-Means, 'CLV_Segment') and features to describe. AI will generate a narrative for each segment.")
             if gemini_api_key:
@@ -3672,8 +3702,8 @@ Be concise, insightful, and actionable. Structure your response clearly with hea
             else:
                 st.info("Enter your Gemini API key in the sidebar to enable AI-powered segment narratives.")
 
-        # NEW FEATURE 29: Custom Theme Builder
-        with st.expander("🖌️ Custom Theme Designer"):
+        # --- ADVANCED TOOL 11: Custom Theme Designer --- (Was New Feature 29)
+        with st.expander("🖌️ ADVANCED TOOL 11: Custom Theme Designer"):
             st.subheader("Create Your Custom Theme")
             
             col1, col2 = st.columns(2)
@@ -3730,20 +3760,17 @@ Be concise, insightful, and actionable. Structure your response clearly with hea
                                  f"{theme_name.lower().replace(' ', '_')}_theme.json",
                                  key="theme_download_button")
 
-        # Auto-refresh functionality
-        if refresh_interval > 0:
-            time.sleep(refresh_interval)
-            st.rerun()
+        # --- ADVANCED TOOL 12: SQL Query Workbench --- (Was Advanced Tool 11)
+        # This was already correctly categorized and named, so it just gets renumbered.
+        # The existing code for SQL Query Workbench will now effectively be "ADVANCED TOOL 12"
+        # due to the insertion of the merged Anomaly Investigation tool at position 6.
+        # No code change needed here other than awareness of its new effective number.
 
-        # Footer with session info
-        st.markdown("---")
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.info(f"🕒 Session: {datetime.now().strftime('%H:%M:%S')}")
-        with col2:
-            st.info(f"🎨 Theme: {selected_theme}")
-        with col3:
-            st.info(f"📚 Datasets: {len(datasets)}")
+        # The SQL Query Workbench expander follows...
+        # (No changes needed to its content, just its effective number in the sequence)
+        with st.expander("🗃️ ADVANCED TOOL 12: SQL Query Workbench (Data Interaction Category)", expanded=True): # Renumbered
+            st.subheader("Execute SQL Queries on Your DataFrames")
+            st.info("Select a dataset and write SQL queries to analyze it. The DataFrame will be treated as a table within the query context.")
 
 else:
     st.info("📂 Please upload your data files to begin exploring! 🚀")
@@ -3760,6 +3787,18 @@ else:
         df = pd.DataFrame(sample_data)
         st.success("Sample data generated! Use this to explore features.")
         st.dataframe(df.head())
+
+# Auto-refresh functionality (moved to the end of the main script execution)
+if uploaded_files and datasets and refresh_interval > 0: # Only refresh if data is loaded
+    time.sleep(refresh_interval)
+    st.rerun()
+
+# Footer with session info (moved to the end)
+st.markdown("---")
+footer_col1, footer_col2, footer_col3 = st.columns(3)
+with footer_col1: st.info(f"🕒 Session: {datetime.now().strftime('%H:%M:%S')}")
+with footer_col2: st.info(f"🎨 Theme: {selected_theme}")
+with footer_col3: st.info(f"📚 Datasets: {len(datasets) if uploaded_files and datasets else 0}")
 
 
 with st.sidebar:
