@@ -4360,5 +4360,3 @@ with st.sidebar:
 
 
 st.image("d4.jpg", caption="Data Analysis meets AI meets Elegance.", use_container_width=True)
-
-
