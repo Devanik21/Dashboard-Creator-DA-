@@ -3671,10 +3671,31 @@ NumericColumn1 &lt; 0.4
                             # Individual force plot (for a sample prediction)
                             if len(X_shap_final) > 0:
                                 st.write("#### SHAP Force Plot (for first instance)")
-                                # For multi-class, shap_values is a list of arrays. We need to pick one for force plot.
-                                shap_values_for_force = shap_values[1] if is_classification_shap and isinstance(shap_values, list) else shap_values
-                                st.pyplot(shap.force_plot(explainer.expected_value[1] if is_classification_shap and isinstance(explainer.expected_value, (list, np.ndarray)) and len(explainer.expected_value)>1 else explainer.expected_value, 
-                                                          shap_values_for_force[0,:], X_shap_final.iloc[0,:], matplotlib=True, show=False))
+                                idx_to_plot = 0
+                                features_for_plot_instance = X_shap_final.iloc[idx_to_plot]
+
+                                # Determine base_value and shap_values for this single instance
+                                if is_classification_shap:
+                                    if isinstance(explainer.expected_value, (list, np.ndarray)) and len(explainer.expected_value) > 1: # Multiclass
+                                        # Consistently use class 1 for display, as in summary plot for multiclass
+                                        class_idx_for_force_plot = 1 
+                                        base_value_for_force_plot = explainer.expected_value[class_idx_for_force_plot]
+                                        # shap_values is a list of (N,M) arrays.
+                                        # shap_values[class_idx_for_force_plot] is (N,M) for that class.
+                                        shap_values_for_force_plot_instance = shap_values[class_idx_for_force_plot][idx_to_plot, :]
+                                    else: # Binary classification
+                                        base_value_for_force_plot = explainer.expected_value # Should be scalar
+                                        # shap_values is an (N,M) array for the positive class
+                                        shap_values_for_force_plot_instance = shap_values[idx_to_plot, :]
+                                else: # Regression
+                                    base_value_for_force_plot = explainer.expected_value # Scalar
+                                    # shap_values is an (N,M) array
+                                    shap_values_for_force_plot_instance = shap_values[idx_to_plot, :]
+                                
+                                st.pyplot(shap.force_plot(base_value_for_force_plot, 
+                                                          shap_values_for_force_plot_instance, 
+                                                          features_for_plot_instance, 
+                                                          matplotlib=True, show=False))
                                 plt.clf()
 
                         except Exception as e:
