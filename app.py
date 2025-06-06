@@ -13,7 +13,7 @@ from sklearn.preprocessing import OneHotEncoder, StandardScaler, MinMaxScaler, P
 from sklearn.decomposition import PCA 
 from sklearn.model_selection import train_test_split 
 from sklearn.linear_model import LinearRegression
-from sklearn.ensemble import RandomForestRegressor 
+from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error, r2_score, accuracy_score, classification_report
 import folium
 from sklearn.pipeline import Pipeline
@@ -21,7 +21,7 @@ from sklearn.impute import SimpleImputer
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor, export_text, plot_tree
 from sklearn.ensemble import RandomForestClassifier # Added import
 from streamlit_folium import folium_static
-from sklearn.cluster import DBSCAN # For Geospatial Clustering
+from sklearn.cluster import DBSCAN # For Geospatial Clustering # For ROC AUC
 import google.generativeai as genai
 import io
 import base64
@@ -42,7 +42,7 @@ import matplotlib.cm as cm # For Distribution Fitting plot colors
 from statsmodels.tsa.stattools import ccf # For Time-Lagged Cross-Correlation
 from sklearn.linear_model import LogisticRegression # For Propensity Scoring & Treatment Effect
 from lifelines import KaplanMeierFitter # For Survival Analysis
-from sklearn.preprocessing import LabelEncoder # For Decision Tree target encoding
+from sklearn.preprocessing import LabelEncoder # For Decision Tree target encoding # For ROC curve
 from nltk.sentiment.vader import SentimentIntensityAnalyzer # For Sentiment Analysis
 from lifelines import CoxPHFitter # For Survival Regression
 # New imports for added tools
@@ -50,6 +50,7 @@ import duckdb # For SQL Query Workbench
 from scipy.cluster.hierarchy import dendrogram, linkage # For Hierarchical Clustering
 from sklearn.feature_extraction.text import CountVectorizer # For LDA
 from sklearn.decomposition import LatentDirichletAllocation # For LDA
+from sklearn.metrics import roc_auc_score, roc_curve
 from sklearn.inspection import PartialDependenceDisplay # For PDP/ICE plots
 
 warnings.filterwarnings('ignore')
