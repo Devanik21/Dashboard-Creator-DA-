@@ -4299,6 +4299,307 @@ Be concise, insightful, and actionable. Structure your response clearly with hea
             else:
                 st.info("Enter your Gemini API key in the sidebar to enable AI-powered segment narratives.")
 
+        # --- ADVANCED TOOL 15: Predictive Customer Churn Model ---
+        with st.expander("💔 ADVANCED TOOL 15: Predictive Customer Churn Model"):
+            st.subheader("Identify Customers at Risk of Churning")
+            st.info("Train a classification model to predict customer churn. Requires a 'Churn' indicator column (binary) and relevant customer features.")
+            if not df.empty:
+                churn_target_col = st.selectbox("Select Churn Indicator Column (Binary: 1=Churned, 0=Active)", df.columns, key="churn_target_col")
+                churn_feature_options = [col for col in df.columns if col != churn_target_col]
+                churn_features = st.multiselect("Select Features for Churn Model", churn_feature_options, default=churn_feature_options[:min(5, len(churn_feature_options))], key="churn_model_features")
+
+                if churn_target_col and churn_features:
+                    if st.button("Train Churn Prediction Model", key="run_churn_model"):
+                        try:
+                            churn_df_prep = df[[churn_target_col] + churn_features].copy().dropna()
+                            y_churn = churn_df_prep[churn_target_col]
+
+                            if y_churn.nunique() == 2:
+                                unique_churn_vals = sorted(y_churn.unique())
+                                y_churn = y_churn.map({unique_churn_vals[0]: 0, unique_churn_vals[1]: 1})
+                            elif not y_churn.isin([0,1]).all():
+                                st.error(f"Churn target column '{churn_target_col}' must be binary (0/1) or have two distinct values.")
+                                st.stop()
+
+                            X_churn = churn_df_prep[churn_features]
+                            X_churn_processed = pd.get_dummies(X_churn, drop_first=True)
+                            
+                            imputer_churn = SimpleImputer(strategy='median')
+                            X_churn_imputed = imputer_churn.fit_transform(X_churn_processed)
+                            X_churn_imputed_df = pd.DataFrame(X_churn_imputed, columns=X_churn_processed.columns, index=X_churn_processed.index)
+
+                            y_aligned_churn = y_churn.loc[X_churn_imputed_df.index].dropna()
+                            X_final_churn = X_churn_imputed_df.loc[y_aligned_churn.index]
+
+                            if X_final_churn.empty or y_aligned_churn.empty or len(y_aligned_churn.unique()) < 2:
+                                st.error("Not enough data or classes after preprocessing for churn model training.")
+                                st.stop()
+
+                            X_train_churn, X_test_churn, y_train_churn, y_test_churn = train_test_split(X_final_churn, y_aligned_churn, test_size=0.3, random_state=42, stratify=y_aligned_churn)
+
+                            churn_model = RandomForestClassifier(random_state=42, n_estimators=100, class_weight='balanced')
+                            churn_model.fit(X_train_churn, y_train_churn)
+                            y_pred_churn = churn_model.predict(X_test_churn)
+                            y_proba_churn = churn_model.predict_proba(X_test_churn)[:, 1]
+
+                            st.write("#### Churn Model Performance (Test Set)")
+                            st.text(classification_report(y_test_churn, y_pred_churn, zero_division=0))
+                            st.metric("ROC AUC Score", f"{roc_auc_score(y_test_churn, y_proba_churn):.3f}")
+
+                            st.write("#### Feature Importances for Churn Prediction")
+                            importances_churn = pd.Series(churn_model.feature_importances_, index=X_final_churn.columns).sort_values(ascending=False)
+                            st.bar_chart(importances_churn.head(10))
+
+                        except Exception as e:
+                            st.error(f"Error during Churn Model training: {e}")
+                else:
+                    st.info("Select a binary churn target and feature columns.")
+            else:
+                st.info("Upload data to train a churn prediction model.")
+
+        # --- ADVANCED TOOL 16: Dynamic Pricing Simulation (Conceptual) ---
+        with st.expander("⚖️ ADVANCED TOOL 16: Dynamic Pricing Simulation (Conceptual)"):
+            st.subheader("Simulate Revenue Impact of Price Changes")
+            st.info("Conceptually simulate how changes in price might affect demand and revenue. Requires a product/category, current price, quantity, and an estimated price elasticity.")
+            if categorical_cols and numeric_cols:
+                price_sim_item_col = st.selectbox("Select Product/Category Column for Pricing", categorical_cols, key="price_sim_item")
+                price_sim_current_price_col = st.selectbox("Select Current Price Column", numeric_cols, key="price_sim_price")
+                price_sim_current_qty_col = st.selectbox("Select Current Quantity Sold Column", numeric_cols, key="price_sim_qty")
+
+                if price_sim_item_col and price_sim_current_price_col and price_sim_current_qty_col:
+                    selected_item_price_sim = st.selectbox("Select a Specific Product/Category to Simulate", df[price_sim_item_col].unique(), key="price_sim_select_item")
+                    
+                    item_data_sim = df[df[price_sim_item_col] == selected_item_price_sim]
+                    if not item_data_sim.empty:
+                        avg_current_price = item_data_sim[price_sim_current_price_col].mean()
+                        avg_current_qty = item_data_sim[price_sim_current_qty_col].mean()
+
+                        st.write(f"Current Average Price for '{selected_item_price_sim}': {avg_current_price:.2f}")
+                        st.write(f"Current Average Quantity for '{selected_item_price_sim}': {avg_current_qty:.2f}")
+
+                        price_elasticity_sim = st.slider("Estimated Price Elasticity of Demand", -5.0, -0.1, -1.5, 0.1, key="price_sim_elasticity", help="Typically negative. E.g., -1.5 means a 10% price increase leads to a 15% quantity decrease.")
+                        price_change_pct_sim = st.slider("Simulated Price Change (%)", -50, 50, 10, key="price_sim_change_pct")
+
+                        if st.button("Simulate Pricing Impact", key="run_price_sim"):
+                            new_price_sim = avg_current_price * (1 + price_change_pct_sim / 100)
+                            qty_change_pct_sim = price_elasticity_sim * price_change_pct_sim 
+                            new_qty_sim = avg_current_qty * (1 + qty_change_pct_sim / 100)
+                            new_qty_sim = max(0, new_qty_sim) # Quantity cannot be negative
+
+                            current_revenue_sim = avg_current_price * avg_current_qty
+                            new_revenue_sim = new_price_sim * new_qty_sim
+
+                            st.write("#### Simulation Results:")
+                            col_sim1, col_sim2, col_sim3 = st.columns(3)
+                            with col_sim1:
+                                st.metric("New Price", f"{new_price_sim:.2f}", delta=f"{(new_price_sim - avg_current_price):.2f} ({price_change_pct_sim}%)")
+                            with col_sim2:
+                                st.metric("New Quantity", f"{new_qty_sim:.2f}", delta=f"{(new_qty_sim - avg_current_qty):.2f} ({qty_change_pct_sim:.1f}%)")
+                            with col_sim3:
+                                st.metric("New Revenue", f"{new_revenue_sim:.2f}", delta=f"{(new_revenue_sim - current_revenue_sim):.2f}")
+                            st.caption("Note: This is a simplified simulation based on estimated elasticity and average values.")
+                    else:
+                        st.warning(f"No data found for selected item '{selected_item_price_sim}'.")
+                else:
+                    st.info("Select product/category, current price, and current quantity columns.")
+            else:
+                st.info("Dynamic Pricing Simulation requires categorical and numeric columns.")
+
+        # --- ADVANCED TOOL 17: Sales Funnel Conversion Analysis (Conceptual) ---
+        with st.expander("💧 ADVANCED TOOL 17: Sales Funnel Conversion Analysis (Conceptual)"):
+            st.subheader("Analyze Conversion Rates Through a Sales Funnel")
+            st.info("Define stages of your sales funnel and provide columns representing counts at each stage to visualize conversion rates.")
+            if not df.empty:
+                funnel_stages_str = st.text_input("Enter Funnel Stages (comma-separated, e.g., Website Visits, Product Views, Add to Cart, Purchase)", 
+                                                  "Website Visits,Product Views,Add to Cart,Purchase", key="funnel_stages_input")
+                funnel_stages = [stage.strip() for stage in funnel_stages_str.split(',') if stage.strip()]
+
+                stage_columns = {}
+                if funnel_stages:
+                    st.write("Map Funnel Stages to Numeric Columns (Counts/Values at each stage):")
+                    for stage in funnel_stages:
+                        stage_columns[stage] = st.selectbox(f"Column for '{stage}'", [None] + numeric_cols, key=f"funnel_col_{stage.replace(' ','_')}")
+                
+                if st.button("Analyze Funnel Conversion", key="run_funnel_analysis") and all(stage_columns.values()):
+                    try:
+                        funnel_data = []
+                        for stage in funnel_stages:
+                            col_name = stage_columns[stage]
+                            if col_name in df.columns and pd.api.types.is_numeric_dtype(df[col_name]):
+                                funnel_data.append(df[col_name].sum()) # Summing up values for each stage
+                            else:
+                                st.error(f"Column '{col_name}' for stage '{stage}' is not valid or not numeric.")
+                                st.stop()
+                        
+                        if len(funnel_data) == len(funnel_stages):
+                            fig_funnel = go.Figure(go.Funnel(
+                                y = funnel_stages,
+                                x = funnel_data,
+                                textposition = "inside",
+                                textinfo = "value+percent previous",
+                                marker = {"color": [custom_color if i==0 else px.colors.sequential.Blues[len(px.colors.sequential.Blues)-1-i%len(px.colors.sequential.Blues)] for i in range(len(funnel_stages))]}
+                            ))
+                            fig_funnel.update_layout(title="Sales Funnel Conversion Rates")
+                            st.plotly_chart(fig_funnel, use_container_width=True)
+                        else:
+                            st.warning("Could not gather data for all funnel stages.")
+                    except Exception as e:
+                        st.error(f"Error during Funnel Analysis: {e}")
+                elif funnel_stages and not all(stage_columns.values()):
+                    st.info("Please map all defined funnel stages to numeric columns.")
+            else:
+                st.info("Upload data to perform funnel analysis.")
+
+        # --- ADVANCED TOOL 18: Inventory Optimization Suggestions (Conceptual AI) ---
+        with st.expander("📦 ADVANCED TOOL 18: Inventory Optimization Suggestions (Conceptual AI)"):
+            st.subheader("Get AI-Powered Suggestions for Inventory Management")
+            st.info("Provide product ID, sales quantity, and optionally current inventory and lead time. AI will offer conceptual advice.")
+            if gemini_api_key:
+                if categorical_cols and numeric_cols:
+                    inv_prod_id_col = st.selectbox("Select Product ID Column", categorical_cols + numeric_cols, key="inv_prod_id")
+                    inv_sales_qty_col = st.selectbox("Select Sales Quantity Column (e.g., last 30 days)", numeric_cols, key="inv_sales_qty")
+                    inv_current_stock_col = st.selectbox("Select Current Inventory Column (Optional)", [None] + numeric_cols, key="inv_current_stock")
+                    inv_lead_time_col = st.selectbox("Select Supplier Lead Time (Days) Column (Optional)", [None] + numeric_cols, key="inv_lead_time")
+
+                    if inv_prod_id_col and inv_sales_qty_col:
+                        selected_prod_inv_opt = st.selectbox("Select a Specific Product for Inventory Advice", df[inv_prod_id_col].unique()[:100], key="inv_opt_select_prod") # Limit for dropdown
+                        
+                        if st.button("🤖 Get Inventory Optimization Advice", key="run_inv_opt_ai"):
+                            prod_data_inv = df[df[inv_prod_id_col] == selected_prod_inv_opt].iloc[0] if not df[df[inv_prod_id_col] == selected_prod_inv_opt].empty else None
+                            if prod_data_inv is not None:
+                                sales_qty = prod_data_inv[inv_sales_qty_col]
+                                current_stock = prod_data_inv.get(inv_current_stock_col, "Not Provided") if inv_current_stock_col else "Not Provided"
+                                lead_time = prod_data_inv.get(inv_lead_time_col, "Not Provided") if inv_lead_time_col else "Not Provided"
+
+                                inv_prompt = f"""
+                                You are an inventory management expert. For a product '{selected_prod_inv_opt}':
+                                - Recent Sales Quantity (e.g., last 30 days): {sales_qty}
+                                - Current Stock Level: {current_stock}
+                                - Supplier Lead Time (days): {lead_time}
+
+                                Based on this information, provide:
+                                1. A brief assessment of the current inventory situation (e.g., risk of stockout, overstock).
+                                2. Two actionable, conceptual suggestions for optimizing inventory for this product (e.g., reorder point, safety stock considerations, demand forecasting improvements).
+                                Keep the advice high-level and conceptual.
+                                """
+                                with st.spinner("AI is analyzing inventory data..."):
+                                    try:
+                                        model_inv_opt = genai.GenerativeModel("gemini-2.0-flash")
+                                        response_inv_opt = model_inv_opt.generate_content(inv_prompt)
+                                        st.markdown("#### AI Inventory Optimization Advice:")
+                                        st.markdown(response_inv_opt.text)
+                                    except Exception as e:
+                                        st.error(f"Gemini API Error for Inventory Advice: {str(e)}")
+                            else:
+                                st.warning(f"No data found for product '{selected_prod_inv_opt}'.")
+                    else:
+                        st.info("Select Product ID and Sales Quantity columns.")
+                else:
+                    st.info("Inventory Optimization requires product ID and sales quantity columns.")
+            else:
+                st.info("Enter your Gemini API key in the sidebar for AI-powered inventory suggestions.")
+
+        # --- ADVANCED TOOL 19: Automated Anomaly Root Cause Analysis (AI-Enhanced) ---
+        # This tool is a more focused version of the Anomaly Investigation tool, specifically using AI for root cause.
+        with st.expander("🔍 ADVANCED TOOL 19: Automated Anomaly Root Cause Analysis (AI-Enhanced)"):
+            st.subheader("AI-Powered Root Cause Suggestions for Anomalies")
+            st.info("Select a previously detected anomaly and relevant contextual features. AI will suggest potential root causes.")
+            if gemini_api_key:
+                if 'anomalies_detected_df' in st.session_state and not st.session_state.anomalies_detected_df.empty:
+                    anomalies_for_rca_df = st.session_state.anomalies_detected_df
+                    st.write("Detected Anomalies (available for AI Root Cause Analysis):")
+                    st.dataframe(anomalies_for_rca_df.head())
+
+                    selected_anomaly_idx_rca = st.selectbox("Select Anomaly Index for AI Root Cause Analysis", anomalies_for_rca_df.index.tolist(), key="ai_rca_anomaly_idx")
+                    
+                    if selected_anomaly_idx_rca is not None:
+                        anomaly_data_point_rca = df.loc[selected_anomaly_idx_rca]
+                        st.write(f"#### Details for Anomaly at Index: {selected_anomaly_idx_rca}")
+                        st.dataframe(anomaly_data_point_rca.to_frame().T)
+
+                        contextual_features_rca = st.multiselect(
+                            "Select Contextual Features for AI Root Cause Analysis",
+                            df.columns.tolist(),
+                            default=[col for col in numeric_cols[:2] + categorical_cols[:2] if col in df.columns and col in anomaly_data_point_rca.index],
+                            key="ai_rca_context_features"
+                        )
+
+                        if st.button("🤖 Suggest Root Causes with AI", key="run_ai_rca"):
+                            with st.spinner("AI is brainstorming root causes..."):
+                                anomaly_details_str_rca = "\n".join([f"- {col}: {anomaly_data_point_rca[col]}" for col in anomaly_data_point_rca.index if pd.notna(anomaly_data_point_rca[col]) and col in contextual_features_rca])
+                                
+                                prompt_ai_rca = f"""
+                                You are an expert root cause analyst. An anomalous data point has been identified:
+                                Anomaly Index: {selected_anomaly_idx_rca}
+                                Key Feature Values for this Anomaly:
+                                {anomaly_details_str_rca}
+
+                                Considering these feature values, suggest 3-5 plausible and distinct root causes for why this data point might be anomalous. 
+                                For each suggested root cause, briefly explain your reasoning.
+                                Think about potential data entry errors, system glitches, unusual real-world events, specific customer behaviors, or product characteristics.
+                                """
+                                try:
+                                    model_ai_rca = genai.GenerativeModel("gemini-2.0-flash")
+                                    response_ai_rca = model_ai_rca.generate_content(prompt_ai_rca)
+                                    st.markdown("#### AI Suggested Root Causes for Anomaly:")
+                                    st.markdown(response_ai_rca.text)
+                                except Exception as e:
+                                    st.error(f"Gemini API Error for Root Cause Analysis: {str(e)}")
+                else:
+                    st.info("Run the 'Anomaly Detection Dashboard' first to identify anomalies for root cause analysis.")
+            else:
+                st.info("Enter your Gemini API key in the sidebar for AI-powered root cause suggestions.")
+
+        # --- ADVANCED TOOL 20: Scenario Planning & Impact Analysis (AI-Enhanced) ---
+        with st.expander("🚀 ADVANCED TOOL 20: Scenario Planning & Impact Analysis (AI-Enhanced)"):
+            st.subheader("Explore Potential Impacts of Defined Scenarios with AI")
+            st.info("Describe a scenario (e.g., 'What if demand for Product X doubles due to a marketing campaign?') and let AI provide a qualitative impact assessment based on the dataset's context.")
+            if gemini_api_key:
+                scenario_description = st.text_area("Describe your Scenario:", height=100, 
+                                                    placeholder="E.g., What if there's a 20% increase in 'Sales' for 'Region'='North' due to a new local partnership?",
+                                                    key="scenario_desc_input")
+                
+                scenario_context_features = st.multiselect(
+                    "Select Key Dataset Columns Relevant to this Scenario (for AI context)",
+                    df.columns.tolist(),
+                    default=df.columns.tolist()[:min(5, len(df.columns))],
+                    key="scenario_context_features"
+                )
+
+                if scenario_description and scenario_context_features:
+                    if st.button("🔮 Analyze Scenario Impact with AI", key="run_scenario_ai"):
+                        with st.spinner("AI is simulating the scenario..."):
+                            # Provide a sample of the data for context
+                            data_sample_scenario = df[scenario_context_features].head(5).to_string()
+                            
+                            prompt_scenario_ai = f"""
+                            You are a strategic business analyst. Consider the following dataset characteristics:
+                            The dataset has columns: {', '.join(df.columns.tolist())}.
+                            Selected relevant columns for this scenario are: {', '.join(scenario_context_features)}.
+                            A small sample of data from these relevant columns:
+                            {data_sample_scenario}
+
+                            Now, analyze the following scenario: "{scenario_description}"
+
+                            Based on this scenario and the general nature of the provided dataset columns, provide a qualitative impact assessment. Discuss:
+                            1. Potential primary impacts on key metrics (mention which metrics from the dataset might be affected).
+                            2. Possible secondary or ripple effects on other aspects of the business/data.
+                            3. Key assumptions you are making in your analysis.
+                            4. 2-3 critical factors or uncertainties that could influence the actual outcome.
+                            Keep the analysis concise and strategic.
+                            """
+                            try:
+                                model_scenario_ai = genai.GenerativeModel("gemini-2.0-flash")
+                                response_scenario_ai = model_scenario_ai.generate_content(prompt_scenario_ai)
+                                st.markdown("#### AI Scenario Impact Assessment:")
+                                st.markdown(response_scenario_ai.text)
+                            except Exception as e:
+                                st.error(f"Gemini API Error for Scenario Analysis: {str(e)}")
+                else:
+                    st.info("Describe your scenario and select relevant context features.")
+            else:
+                st.info("Enter your Gemini API key in the sidebar for AI-powered scenario planning.")
+
         # --- Miscellaneous Tool: Data Dictionary Generator ---
         with st.expander("📚 Miscellaneous Tool: Data Dictionary Generator"):
             st.subheader("Generate a Data Dictionary for Your Dataset")
