@@ -4400,7 +4400,7 @@ Be concise, insightful, and actionable. Structure your response clearly with hea
                 st.info("Upload data to use the Feature Selection Utility.")
 
         # --- ADVANCED TOOL 15: Predictive Customer Churn Model ---
-        with st.expander("💔 ADVANCED TOOL 15: Predictive Customer Churn Model"):
+        with st.expander("💔 ADVANCED TOOL 16: Predictive Customer Churn Model"):
             st.subheader("Identify Customers at Risk of Churning")
             st.info("Train a classification model to predict customer churn. Requires a 'Churn' indicator column (binary) and relevant customer features.")
             if not df.empty:
