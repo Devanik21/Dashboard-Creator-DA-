@@ -3808,7 +3808,7 @@ awards_won >= 40
                 st.info("Upload data to use the interactive chart builder.")
 
         # --- ADVANCED TOOL 4: Anomaly Investigation & Explanation ---
-        with st.expander("🕵️ ADVANCED TOOL 10: Anomaly Investigation & Explanation"):
+        with st.expander("🕵️ ADVANCED TOOL 9: Anomaly Investigation & Explanation"):
             st.subheader("Investigate and Explain Detected Anomalies")
             st.info("This tool helps explain anomalies detected by the 'Anomaly Detection Dashboard'. First, review feature comparisons, then optionally use AI for a narrative explanation.")
 
@@ -3918,7 +3918,7 @@ Be concise, insightful, and actionable. Structure your response clearly with hea
                         st.info("If you have a Gemini API key, enter it in the sidebar to enable AI-powered narrative explanations for anomalies.")
 
         # --- ADVANCED TOOL 5: Propensity Scoring Model ---
-        with st.expander("🎯 ADVANCED TOOL 11: Propensity Scoring Model"):
+        with st.expander("🎯 ADVANCED TOOL 10: Propensity Scoring Model"):
             st.subheader("Predict Likelihood of a Binary Outcome")
             st.info("Train a Logistic Regression model to predict the probability (propensity score) of a binary outcome (e.g., purchase, churn, conversion).")
             if categorical_cols or numeric_cols: # Need features and a target
@@ -3979,7 +3979,7 @@ Be concise, insightful, and actionable. Structure your response clearly with hea
                 st.info("Propensity Scoring requires columns for target and features.")
 
         # --- ADVANCED TOOL 6: Simplified Treatment Effect Estimation ---
-        with st.expander("💊 ADVANCED TOOL 12: Simplified Treatment Effect Estimation"):
+        with st.expander("💊 ADVANCED TOOL 11: Simplified Treatment Effect Estimation"):
             st.subheader("Estimate Average Treatment Effect (ATE)")
             st.info("This tool provides a simplified estimation of the Average Treatment Effect (ATE) using regression adjustment. Select a binary treatment indicator, a numeric outcome, and optional covariates.")
             if categorical_cols or numeric_cols: # Need treatment, outcome
@@ -4052,7 +4052,7 @@ Be concise, insightful, and actionable. Structure your response clearly with hea
                 st.info("ATE Estimation requires columns for treatment, outcome, and optionally covariates.")
 
         # --- ADVANCED TOOL 7: Key Drivers Analysis ---
-        with st.expander("🔑 ADVANCED TOOL 13: Key Drivers Analysis"):
+        with st.expander("🔑 ADVANCED TOOL 12: Key Drivers Analysis"):
             st.subheader("Identify Key Features Influencing a Target Variable")
             st.info("Train a model (Random Forest or Linear/Logistic Regression) and identify the most influential features (drivers) for a selected target variable.")
             if not df.empty:
@@ -4168,7 +4168,7 @@ Be concise, insightful, and actionable. Structure your response clearly with hea
                 st.info("Upload data to perform Key Drivers Analysis.")
 
         # --- ADVANCED TOOL 3: Robust Model Evaluation and Comparison Dashboard ---
-        with st.expander("📊 ADVANCED TOOL 9: Model Evaluation & Comparison Dashboard"):
+        with st.expander("📊 ADVANCED TOOL 13: Model Evaluation & Comparison Dashboard"):
             st.subheader("Compare Performance of Trained Models")
             st.info("This tool allows comparison of models trained for the same task (classification or regression). For demonstration, it trains Logistic Regression and Random Forest for a selected binary target.")
             
