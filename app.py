@@ -3807,90 +3807,6 @@ awards_won >= 40
             else:
                 st.info("Upload data to use the interactive chart builder.")
 
-        # --- ADVANCED TOOL 3: Robust Model Evaluation and Comparison Dashboard ---
-        with st.expander("📊 ADVANCED TOOL 9: Model Evaluation & Comparison Dashboard"):
-            st.subheader("Compare Performance of Trained Models")
-            st.info("This tool allows comparison of models trained for the same task (classification or regression). For demonstration, it trains Logistic Regression and Random Forest for a selected binary target.")
-            
-            if not df.empty:
-                eval_target_col = st.selectbox("Select Binary Target for Model Comparison", [col for col in df.columns if df[col].nunique()==2], key="eval_target") # Filter for binary cols
-                eval_feature_options = [col for col in df.columns if col != eval_target_col]
-                eval_features = st.multiselect("Select Features for Model Comparison", eval_feature_options, default=eval_feature_options[:min(5, len(eval_feature_options))], key="eval_features")
-
-                if eval_target_col and eval_features:
-                    if st.button("Train & Compare Models", key="run_model_comparison"):
-                        try:
-                            eval_df_prep = df[[eval_target_col] + eval_features].copy().dropna()
-                            y_eval = eval_df_prep[eval_target_col]
-                            X_eval = eval_df_prep[eval_features]
-
-                            # Ensure target is 0/1
-                            unique_eval_vals = sorted(y_eval.unique())
-                            if len(unique_eval_vals) == 2:
-                                y_eval = y_eval.map({unique_eval_vals[0]: 0, unique_eval_vals[1]: 1})
-                            else:
-                                st.error("Selected target for comparison is not binary.")
-                                st.stop()
-
-                            X_eval_processed = pd.get_dummies(X_eval, drop_first=True)
-                            imputer_eval = SimpleImputer(strategy='median')
-                            X_eval_imputed = imputer_eval.fit_transform(X_eval_processed)
-                            X_eval_imputed_df = pd.DataFrame(X_eval_imputed, columns=X_eval_processed.columns, index=X_eval_processed.index)
-
-                            y_aligned_eval = y_eval.loc[X_eval_imputed_df.index].dropna()
-                            X_final_eval = X_eval_imputed_df.loc[y_aligned_eval.index]
-
-                            if X_final_eval.empty or y_aligned_eval.empty:
-                                st.error("Not enough data after preprocessing for model comparison.")
-                                st.stop()
-
-                            X_train_eval, X_test_eval, y_train_eval, y_test_eval = train_test_split(X_final_eval, y_aligned_eval, test_size=0.3, random_state=42, stratify=y_aligned_eval)
-
-                            models_to_compare = {
-                                "Logistic Regression": LogisticRegression(solver='liblinear', random_state=42, class_weight='balanced'),
-                                "Random Forest": RandomForestClassifier(random_state=42, n_estimators=50, class_weight='balanced'),
-                                "Decision Tree": DecisionTreeClassifier(random_state=42, class_weight='balanced'),
-                                "Gradient Boosting": GradientBoostingClassifier(random_state=42, n_estimators=50)
-                            }
-                            
-                            results_comparison = []
-                            roc_curves_data = []
-
-                            for name, model_instance in models_to_compare.items():
-                                model_instance.fit(X_train_eval, y_train_eval)
-                                y_pred_eval = model_instance.predict(X_test_eval)
-                                y_proba_eval = model_instance.predict_proba(X_test_eval)[:, 1]
-                                
-                                report = classification_report(y_test_eval, y_pred_eval, output_dict=True, zero_division=0)
-                                results_comparison.append({
-                                    "Model": name,
-                                    "Accuracy": report['accuracy'],
-                                    "Precision (1)": report['1']['precision'] if '1' in report else report.get('weighted avg',{}).get('precision'),
-                                    "Recall (1)": report['1']['recall'] if '1' in report else report.get('weighted avg',{}).get('recall'),
-                                    "F1-score (1)": report['1']['f1-score'] if '1' in report else report.get('weighted avg',{}).get('f1-score'),
-                                    "ROC AUC": roc_auc_score(y_test_eval, y_proba_eval)
-                                })
-                                fpr, tpr, _ = roc_curve(y_test_eval, y_proba_eval)
-                                roc_curves_data.append({'fpr': fpr, 'tpr': tpr, 'label': f'{name} (AUC = {roc_auc_score(y_test_eval, y_proba_eval):.2f})'})
-
-                            st.write("#### Model Performance Metrics")
-                            st.dataframe(pd.DataFrame(results_comparison))
-
-                            st.write("#### ROC Curves")
-                            fig_roc = go.Figure()
-                            for curve_data in roc_curves_data:
-                                fig_roc.add_trace(go.Scatter(x=curve_data['fpr'], y=curve_data['tpr'], mode='lines', name=curve_data['label']))
-                            fig_roc.add_trace(go.Scatter(x=[0, 1], y=[0, 1], mode='lines', name='Baseline (Random)', line=dict(dash='dash', color='grey')))
-                            fig_roc.update_layout(title="ROC Curves Comparison", xaxis_title="False Positive Rate", yaxis_title="True Positive Rate")
-                            st.plotly_chart(fig_roc, use_container_width=True)
-
-                        except Exception as e:
-                            st.error(f"Error during model comparison: {e}")
-                else:
-                    st.info("Select a binary target and feature columns for model comparison.")
-            else:
-                st.info("Upload data to use the model evaluation dashboard.")
-
         # --- ADVANCED TOOL 4: Anomaly Investigation & Explanation ---
         with st.expander("🕵️ ADVANCED TOOL 10: Anomaly Investigation & Explanation"):
             st.subheader("Investigate and Explain Detected Anomalies")
@@ -4251,6 +4167,90 @@ Be concise, insightful, and actionable. Structure your response clearly with hea
             else:
                 st.info("Upload data to perform Key Drivers Analysis.")
 
+        # --- ADVANCED TOOL 3: Robust Model Evaluation and Comparison Dashboard ---
+        with st.expander("📊 ADVANCED TOOL 9: Model Evaluation & Comparison Dashboard"):
+            st.subheader("Compare Performance of Trained Models")
+            st.info("This tool allows comparison of models trained for the same task (classification or regression). For demonstration, it trains Logistic Regression and Random Forest for a selected binary target.")
+            
+            if not df.empty:
+                eval_target_col = st.selectbox("Select Binary Target for Model Comparison", [col for col in df.columns if df[col].nunique()==2], key="eval_target") # Filter for binary cols
+                eval_feature_options = [col for col in df.columns if col != eval_target_col]
+                eval_features = st.multiselect("Select Features for Model Comparison", eval_feature_options, default=eval_feature_options[:min(5, len(eval_feature_options))], key="eval_features")
+
+                if eval_target_col and eval_features:
+                    if st.button("Train & Compare Models", key="run_model_comparison"):
+                        try:
+                            eval_df_prep = df[[eval_target_col] + eval_features].copy().dropna()
+                            y_eval = eval_df_prep[eval_target_col]
+                            X_eval = eval_df_prep[eval_features]
+
+                            # Ensure target is 0/1
+                            unique_eval_vals = sorted(y_eval.unique())
+                            if len(unique_eval_vals) == 2:
+                                y_eval = y_eval.map({unique_eval_vals[0]: 0, unique_eval_vals[1]: 1})
+                            else:
+                                st.error("Selected target for comparison is not binary.")
+                                st.stop()
+
+                            X_eval_processed = pd.get_dummies(X_eval, drop_first=True)
+                            imputer_eval = SimpleImputer(strategy='median')
+                            X_eval_imputed = imputer_eval.fit_transform(X_eval_processed)
+                            X_eval_imputed_df = pd.DataFrame(X_eval_imputed, columns=X_eval_processed.columns, index=X_eval_processed.index)
+
+                            y_aligned_eval = y_eval.loc[X_eval_imputed_df.index].dropna()
+                            X_final_eval = X_eval_imputed_df.loc[y_aligned_eval.index]
+
+                            if X_final_eval.empty or y_aligned_eval.empty:
+                                st.error("Not enough data after preprocessing for model comparison.")
+                                st.stop()
+
+                            X_train_eval, X_test_eval, y_train_eval, y_test_eval = train_test_split(X_final_eval, y_aligned_eval, test_size=0.3, random_state=42, stratify=y_aligned_eval)
+
+                            models_to_compare = {
+                                "Logistic Regression": LogisticRegression(solver='liblinear', random_state=42, class_weight='balanced'),
+                                "Random Forest": RandomForestClassifier(random_state=42, n_estimators=50, class_weight='balanced'),
+                                "Decision Tree": DecisionTreeClassifier(random_state=42, class_weight='balanced'),
+                                "Gradient Boosting": GradientBoostingClassifier(random_state=42, n_estimators=50)
+                            }
+                            
+                            results_comparison = []
+                            roc_curves_data = []
+
+                            for name, model_instance in models_to_compare.items():
+                                model_instance.fit(X_train_eval, y_train_eval)
+                                y_pred_eval = model_instance.predict(X_test_eval)
+                                y_proba_eval = model_instance.predict_proba(X_test_eval)[:, 1]
+                                
+                                report = classification_report(y_test_eval, y_pred_eval, output_dict=True, zero_division=0)
+                                results_comparison.append({
+                                    "Model": name,
+                                    "Accuracy": report['accuracy'],
+                                    "Precision (1)": report['1']['precision'] if '1' in report else report.get('weighted avg',{}).get('precision'),
+                                    "Recall (1)": report['1']['recall'] if '1' in report else report.get('weighted avg',{}).get('recall'),
+                                    "F1-score (1)": report['1']['f1-score'] if '1' in report else report.get('weighted avg',{}).get('f1-score'),
+                                    "ROC AUC": roc_auc_score(y_test_eval, y_proba_eval)
+                                })
+                                fpr, tpr, _ = roc_curve(y_test_eval, y_proba_eval)
+                                roc_curves_data.append({'fpr': fpr, 'tpr': tpr, 'label': f'{name} (AUC = {roc_auc_score(y_test_eval, y_proba_eval):.2f})'})
+
+                            st.write("#### Model Performance Metrics")
+                            st.dataframe(pd.DataFrame(results_comparison))
+
+                            st.write("#### ROC Curves")
+                            fig_roc = go.Figure()
+                            for curve_data in roc_curves_data:
+                                fig_roc.add_trace(go.Scatter(x=curve_data['fpr'], y=curve_data['tpr'], mode='lines', name=curve_data['label']))
+                            fig_roc.add_trace(go.Scatter(x=[0, 1], y=[0, 1], mode='lines', name='Baseline (Random)', line=dict(dash='dash', color='grey')))
+                            fig_roc.update_layout(title="ROC Curves Comparison", xaxis_title="False Positive Rate", yaxis_title="True Positive Rate")
+                            st.plotly_chart(fig_roc, use_container_width=True)
+
+                        except Exception as e:
+                            st.error(f"Error during model comparison: {e}")
+                else:
+                    st.info("Select a binary target and feature columns for model comparison.")
+            else:
+                st.info("Upload data to use the model evaluation dashboard.")
+
         # --- ADVANCED TOOL 8: AI-Powered Segment Narrative Generator ---
         with st.expander("📝 ADVANCED TOOL 14: AI-Powered Segment Narrative Generator"):
             st.subheader("Generate Textual Summaries for Data Segments with AI")
@@ -4298,64 +4298,6 @@ Be concise, insightful, and actionable. Structure your response clearly with hea
                     st.info("No suitable segment columns found (columns with 2-19 unique values). Run a clustering tool or create segments first.")
             else:
                 st.info("Enter your Gemini API key in the sidebar to enable AI-powered segment narratives.")
-
-        # --- Miscellaneous Tool: Custom Theme Designer ---
-        with st.expander("🖌️ Miscellaneous Tool: Custom Theme Designer"):
-            st.subheader("Create Your Custom Theme")
-            
-            col1, col2 = st.columns(2)
-            with col1:
-                primary_color = st.color_picker("Primary Color", "#38B2AC")      # Teal
-                secondary_color = st.color_picker("Secondary Color", "#805AD5")  # Purple
-                text_color = st.color_picker("Text Color", "#E2E8F0")            # Light Gray
-            with col2:
-                bg_color_theme = st.color_picker("Background Color", "#1A202C", key="theme_bg_color") # Renamed to avoid conflict
-                accent_color = st.color_picker("Accent Color", "#ED8936")        # Orange
-                
-            theme_name = st.text_input("Theme Name", "My Custom Theme")
-
-            if st.button("Apply Custom Theme"):
-                custom_css = f"""
-                <style>
-                .stApp {{
-                    background-color: {bg_color_theme};
-                    color: {text_color};
-                }}
-                .metric-card {{
-                    background: linear-gradient(135deg, {primary_color} 0%, {secondary_color} 100%);
-                    color: {text_color}; /* Ensure text color contrasts with new gradient */
-                }}
-                .insight-box {{
-                    background: #2D3748; /* Or a slightly lighter shade of bg_color */
-                    border-left-color: {accent_color};
-                    color: {text_color};
-                }}
-                .stButton > button {{
-                    background-color: {accent_color};
-                    color: {bg_color_theme}; /* Text color for button, ensure contrast */
-                    border: 1px solid {accent_color};
-                }}
-                div[data-testid="stExpander"] > div:first-child summary {{
-                    color: {text_color};
-                }}
-                </style>
-                """
-                st.markdown(custom_css, unsafe_allow_html=True)
-                st.success(f"Applied theme: {theme_name}")
-                
-                # Save theme
-                theme_config = {
-                    "name": theme_name,
-                    "primary": primary_color,
-                    "secondary": secondary_color,
-                    "text": text_color,
-                    "background": bg_color_theme,
-                    "accent": accent_color
-                }
-                st.download_button("Download Theme", 
-                                 json.dumps(theme_config, indent=2),
-                                 f"{theme_name.lower().replace(' ', '_')}_theme.json",
-                                 key="theme_download_button")
 
         # --- Miscellaneous Tool: Data Dictionary Generator ---
         with st.expander("📚 Miscellaneous Tool: Data Dictionary Generator"):
@@ -4471,6 +4413,64 @@ Be concise, insightful, and actionable. Structure your response clearly with hea
             else:
                 st.info("Upload data to visualize missing values.")
 
+        # --- Miscellaneous Tool: Custom Theme Designer ---
+        with st.expander("🖌️ Miscellaneous Tool: Custom Theme Designer"):
+            st.subheader("Create Your Custom Theme")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                primary_color = st.color_picker("Primary Color", "#38B2AC")      # Teal
+                secondary_color = st.color_picker("Secondary Color", "#805AD5")  # Purple
+                text_color = st.color_picker("Text Color", "#E2E8F0")            # Light Gray
+            with col2:
+                bg_color_theme = st.color_picker("Background Color", "#1A202C", key="theme_bg_color") # Renamed to avoid conflict
+                accent_color = st.color_picker("Accent Color", "#ED8936")        # Orange
+                
+            theme_name = st.text_input("Theme Name", "My Custom Theme")
+
+            if st.button("Apply Custom Theme"):
+                custom_css = f"""
+                <style>
+                .stApp {{
+                    background-color: {bg_color_theme};
+                    color: {text_color};
+                }}
+                .metric-card {{
+                    background: linear-gradient(135deg, {primary_color} 0%, {secondary_color} 100%);
+                    color: {text_color}; /* Ensure text color contrasts with new gradient */
+                }}
+                .insight-box {{
+                    background: #2D3748; /* Or a slightly lighter shade of bg_color */
+                    border-left-color: {accent_color};
+                    color: {text_color};
+                }}
+                .stButton > button {{
+                    background-color: {accent_color};
+                    color: {bg_color_theme}; /* Text color for button, ensure contrast */
+                    border: 1px solid {accent_color};
+                }}
+                div[data-testid="stExpander"] > div:first-child summary {{
+                    color: {text_color};
+                }}
+                </style>
+                """
+                st.markdown(custom_css, unsafe_allow_html=True)
+                st.success(f"Applied theme: {theme_name}")
+                
+                # Save theme
+                theme_config = {
+                    "name": theme_name,
+                    "primary": primary_color,
+                    "secondary": secondary_color,
+                    "text": text_color,
+                    "background": bg_color_theme,
+                    "accent": accent_color
+                }
+                st.download_button("Download Theme", 
+                                 json.dumps(theme_config, indent=2),
+                                 f"{theme_name.lower().replace(' ', '_')}_theme.json",
+                                 key="theme_download_button")
+
 
     # Sample data generator for testing (moved outside expanders)
     if st.button("🎲 Generate Sample Data & Explore Features", key="generate_sample_data_button"):
@@ -4503,4 +4503,3 @@ with st.sidebar:
 
 
 st.image("d4.jpg", caption="Data Analysis meets AI meets Elegance.", use_container_width=True)
-
