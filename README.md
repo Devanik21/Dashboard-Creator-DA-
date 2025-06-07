@@ -1,119 +1,165 @@
-# 💡 Advanced Interactive Data Dashboard with Gemini AI
+# 📊 Advanced Data Explorer & Visualizer 🔮
 
+**Your All-in-One Solution for Interactive Data Analysis, Visualization, and AI-Powered Insights.**
 
-A powerful, modern, and elegant Streamlit dashboard that automatically performs exploratory data analysis (EDA), machine learning, data cleaning, visualization, and Gemini-powered natural language insights — all with just a few clicks.
-
----
-
-## 🚀 Features
-
-### 📊 Exploratory Data Analysis (EDA)
-
-* Auto data summary and type detection
-* Histograms, bar charts, pie charts, box plots, scatter plots
-* Correlation heatmap with annotation & methods (pearson, kendall, spearman)
-* Custom Chart Builder (pick X/Y axis, chart type, and color)
-* Pivot tables and group aggregations
-* Treemaps and sunbursts for category visualization
-
-### 📍 Geospatial Visualization
-
-* Automatically detects `latitude`/`longitude`
-* Interactive Folium map with markers, color, and size encoding
-
-### 📥 Data Preprocessing Tools
-
-* Missing value imputer (mean, median, zero, custom, drop rows)
-* Column type converter (to numeric, text, or datetime)
-* One-hot encoding preview and export
-* Binning, transformations, deduplication
-
-### 🧠 Machine Learning & Analytics
-
-* KMeans clustering with interactive visualization
-* Linear Regression with regression line and R² display
-* Isolation Forest for anomaly detection
-* PCA and dimensionality reduction (optional)
-* AutoML (expandable)
-
-### 📈 Statistical Testing
-
-* T-test, ANOVA, A/B Testing
-* Confidence intervals, Z-scores
-
-### 🤖 Gemini AI Integration
-
-* Input Gemini API key via sidebar
-* Natural language insights ("Ask your data anything")
-* Smart summarization using describe/head info
-* Explain trends, generate interpretations
-
-### 🎨 UI/UX Features
-
-* Custom HEX color palette picker
-* Theme switcher (light/dark/cyberpunk 🌌)
-* Expander-based section toggles for clean UI
-* Download cleaned dataset or dashboard config JSON
-
-### 💾 Session Management
-
-* Auto-save and restore dashboard config
-* Shareable session URL via base64 encoding (optional)
+This Streamlit application empowers users to upload datasets and perform a wide array of analyses, from basic data profiling and cleaning to advanced machine learning, time series forecasting, geospatial visualization, and AI-driven insights using Google's Gemini API.
 
 ---
 
-## 🧪 Demo
+🧪 **Demo**
 
-It's live ! : [Live Streamlit App](https://63uxugggjkkrghy7vuxkeh.streamlit.app/) 
+🚀 **Live App:** [Link to your deployed Streamlit App (e.g., on Streamlit Community Cloud)]()
 
-![Demo]([https://via.placeholder.com/900x500?text=Insert+your+app+demo+gif+here](https://63uxugggjkkrghy7vuxkeh.streamlit.app/))
-
----
-
-## 🛠️ Tech Stack
-
-* [Streamlit](https://streamlit.io/)
-* [Pandas](https://pandas.pydata.org/)
-* [Seaborn](https://seaborn.pydata.org/)
-* [Altair](https://altair-viz.github.io/)
-* [Plotly](https://plotly.com/python/)
-* [Folium](https://python-visualization.github.io/folium/)
-* [Scikit-learn](https://scikit-learn.org/stable/)
-* [Google Generative AI (Gemini API)](https://ai.google.dev/)
-* \[Sweetviz / Pandas Profiling]
+*(Add a GIF or screenshot of your app in action here if possible)*
 
 ---
 
-## 🧠 Setup & Run
+✨ **Overview & Key Features**
 
-```bash
-# Step 1: Clone this repo
-https://github.com/your-username/your-repo-name.git
+This application is designed to be a comprehensive toolkit for data analysts, scientists, and enthusiasts. It offers a rich set of features, including:
 
-# Step 2: Install requirements
-pip install -r requirements.txt
-
-# Step 3: Run the Streamlit app
-streamlit run app.py
-```
-
-Create a `.streamlit/secrets.toml` (optional) or input your Gemini API key through the sidebar during runtime.
+*   **Data Ingestion & Profiling:**
+    *   Upload multiple CSV, XLSX, or JSON files.
+    *   Quick data overview (dimensions, missing values, data types).
+    *   Advanced data profiling with quality scores.
+    *   Smart data type detection and conversion suggestions.
+*   **Interactive Data Manipulation:**
+    *   Advanced filtering system for numeric and categorical columns.
+    *   User-defined calculated fields using formulas.
+    *   Data deduplication utility.
+    *   Interactive data binning.
+    *   Column renamer and value replacer.
+*   **Visualization Suite:**
+    *   Quick visualization builder (Scatter, Line, Bar, Histogram, Box).
+    *   Interactive chart customization with Plotly Express (color, faceting).
+    *   Geospatial data visualization (point maps, heatmaps).
+    *   Network analysis for categorical co-occurrence.
+    *   Dendrograms for hierarchical clustering.
+*   **Statistical Analysis:**
+    *   Correlation analysis (Pearson, Spearman, Kendall) with heatmaps.
+    *   A/B testing and ANOVA suite.
+    *   Distribution fitting and goodness-of-fit tests.
+    *   Cross-tabulation / Contingency tables with Chi-squared tests.
+*   **Machine Learning Lab:**
+    *   **Supervised Learning:**
+        *   Automated predictive pipeline (Linear Regression, Polynomial Regression, Random Forest Regressor).
+        *   Decision Tree and Random Forest explorers (for classification and regression) with hyperparameter tuning.
+        *   Predictive Customer Churn Model.
+        *   Propensity Scoring Model.
+    *   **Unsupervised Learning:**
+        *   K-Means clustering analysis.
+        *   Anomaly detection dashboard (IQR, Z-Score, Isolation Forest).
+        *   Hierarchical clustering.
+        *   Latent Dirichlet Allocation (LDA) for topic modeling.
+        *   Principal Component Analysis (PCA) explorer.
+    *   **Model Interpretability:**
+        *   SHAP (SHapley Additive exPlanations) for Random Forest models.
+        *   Partial Dependence Plots (PDP) and Individual Conditional Expectation (ICE) plots.
+*   **Time Series Analysis:**
+    *   Trend analysis and simple forecasting (Exponential Smoothing).
+    *   Advanced forecasting with Prophet.
+    *   Automated time series anomaly detection (STL).
+    *   Time-Lagged Cross-Correlation analysis.
+*   **Specialized Analytics:**
+    *   Market Basket Analysis (Association Rules).
+    *   Advanced Cohort Analysis (Retention & Behavior).
+    *   Customer Lifetime Value (CLV) Profiler.
+    *   Survival Analysis (Kaplan-Meier & Cox PH Model).
+    *   Simplified Treatment Effect Estimation.
+    *   Key Drivers Analysis.
+    *   Comparative Product Performance (Top vs. Bottom N%).
+    *   Dynamic Pricing Simulation.
+    *   Sales Funnel Conversion Analysis.
+*   **AI-Powered Insights (Google Gemini):**
+    *   Ask questions about your data in natural language.
+    *   Automated narrative report generation.
+    *   AI chart-to-text summarizer.
+    *   Anomaly investigation and explanation.
+    *   Inventory optimization suggestions.
+    *   Predictive maintenance advisor (conceptual).
+    *   Scenario planning and impact analysis.
+    *   AI-powered segment narrative generator.
+*   **Data Interaction & Utilities:**
+    *   SQL Query Workbench (using DuckDB).
+    *   Excel-like Query Workbench (pandas `query()` syntax).
+    *   Data Dictionary Generator.
+    *   Random Row Sampler.
+    *   Duplicate Column Finder & Column Value Counter.
+*   **Customization & Export:**
+    *   Theme selection (light, dark, cyberpunk) and custom theme designer.
+    *   Export filtered data and generated reports.
+    *   Auto-refresh option for dashboards.
 
 ---
 
-## 👨‍💻 Author
+🛠️ **Tech Stack**
 
-**Devanik**  — [Devanik21 ](https://github.com/Devanik21)
-National Institute of Technology | ECE | Passionate about AI, ML, and Cryptography
-
-> Built with love, magic, and Gemini ✨
+*   **Core:** Streamlit, Pandas, NumPy
+*   **Visualization:** Matplotlib, Seaborn, Plotly (Express & Graph Objects), Altair, Folium, WordCloud, NetworkX
+*   **Machine Learning:** Scikit-learn (KMeans, IsolationForest, PCA, Classifiers, Regressors, Preprocessing, Metrics, etc.)
+*   **Statistical Analysis:** SciPy (stats), Statsmodels
+*   **Specialized Libraries:**
+    *   `mlxtend` (Market Basket Analysis)
+    *   `nltk` (Sentiment Analysis - VADER)
+    *   `lifelines` (Survival Analysis)
+    *   `duckdb` (SQL Query Workbench)
+    *   `shap` (Model Explainability)
+    *   `prophet` (Time Series Forecasting)
+*   **AI Integration:** Google Generative AI (`google-generativeai` for Gemini API)
 
 ---
 
-## 📜 License
+🧠 **Setup & Run**
 
-MIT License — free to use, remix, and build on 💖
+1.  **Clone this repository:**
+    ```bash
+    git clone https://github.com/your-username/your-repo-name.git
+    cd your-repo-name
+    ```
+
+2.  **Create a virtual environment (recommended):**
+    ```bash
+    python -m venv venv
+    source venv/bin/activate  # On Windows: venv\Scripts\activate
+    ```
+
+3.  **Install requirements:**
+    A `requirements.txt` file would typically list all necessary packages. You can generate one using `pip freeze > requirements.txt` after installing everything. Key packages include:
+    ```bash
+    pip install streamlit pandas numpy altair matplotlib seaborn plotly scikit-learn folium google-generativeai scipy statsmodels mlxtend nltk networkx wordcloud lifelines duckdb shap prophet
+    ```
+    *(You might need to install `nltk` data separately, e.g., `nltk.download('vader_lexicon')`)*
+
+4.  **Set up API Key (for AI features):**
+    *   Create a file named `.streamlit/secrets.toml` in your project root.
+    *   Add your Gemini API key:
+        ```toml
+        GEMINI_API_KEY = "YOUR_API_KEY_HERE"
+        ```
+    *   Alternatively, you can enter the API key directly in the application's sidebar during runtime.
+
+5.  **Run the Streamlit app:**
+    ```bash
+    streamlit run app2.py
+    ```
 
 ---
 
-Need help with deployment, datasets, or a landing page? Ping me\~ ☁️🌈
+👨‍💻 **Author**
+
+*   **Devanik Saha**
+    *   GitHub: Devanik21
+    *   LinkedIn: Devanik Saha
+    *   *National Institute of Technology | ECE | Passionate about AI, ML, and Cryptography*
+
+---
+
+📜 **License**
+
+This project is licensed under the MIT License - see the LICENSE file for details. Feel free to use, remix, and build upon it! 💖
+
+---
+
+✨ **Built with love, magic, and Gemini** ✨
+
+Need help with deployment, datasets, or a landing page? Ping me~ ☁️🌈
