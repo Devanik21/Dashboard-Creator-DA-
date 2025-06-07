@@ -4177,75 +4177,80 @@ Be concise, insightful, and actionable. Structure your response clearly with hea
                 eval_feature_options = [col for col in df.columns if col != eval_target_col]
                 eval_features = st.multiselect("Select Features for Model Comparison", eval_feature_options, default=eval_feature_options[:min(5, len(eval_feature_options))], key="eval_features")
 
+                st.sidebar.subheader("Hyperparameters for Comparison Models")
+                rf_n_estimators_comp = st.sidebar.slider("Random Forest: N Estimators", 10, 200, 50, 10, key="eval_rf_n_est")
+                rf_max_depth_comp = st.sidebar.slider("Random Forest: Max Depth", 2, 30, 10, 1, key="eval_rf_max_depth")
+
                 if eval_target_col and eval_features:
                     if st.button("Train & Compare Models", key="run_model_comparison"):
-                        try:
-                            eval_df_prep = df[[eval_target_col] + eval_features].copy().dropna()
-                            y_eval = eval_df_prep[eval_target_col]
-                            X_eval = eval_df_prep[eval_features]
+                        with st.spinner("Training and comparing models..."):
+                            try:
+                                eval_df_prep = df[[eval_target_col] + eval_features].copy().dropna()
+                                y_eval = eval_df_prep[eval_target_col]
+                                X_eval = eval_df_prep[eval_features]
 
-                            # Ensure target is 0/1
-                            unique_eval_vals = sorted(y_eval.unique())
-                            if len(unique_eval_vals) == 2:
-                                y_eval = y_eval.map({unique_eval_vals[0]: 0, unique_eval_vals[1]: 1})
-                            else:
-                                st.error("Selected target for comparison is not binary.")
-                                st.stop()
+                                # Ensure target is 0/1
+                                unique_eval_vals = sorted(y_eval.unique())
+                                if len(unique_eval_vals) == 2:
+                                    y_eval = y_eval.map({unique_eval_vals[0]: 0, unique_eval_vals[1]: 1})
+                                else:
+                                    st.error("Selected target for comparison is not binary.")
+                                    st.stop()
 
-                            X_eval_processed = pd.get_dummies(X_eval, drop_first=True)
-                            imputer_eval = SimpleImputer(strategy='median')
-                            X_eval_imputed = imputer_eval.fit_transform(X_eval_processed)
-                            X_eval_imputed_df = pd.DataFrame(X_eval_imputed, columns=X_eval_processed.columns, index=X_eval_processed.index)
+                                X_eval_processed = pd.get_dummies(X_eval, drop_first=True)
+                                imputer_eval = SimpleImputer(strategy='median')
+                                X_eval_imputed = imputer_eval.fit_transform(X_eval_processed)
+                                X_eval_imputed_df = pd.DataFrame(X_eval_imputed, columns=X_eval_processed.columns, index=X_eval_processed.index)
 
-                            y_aligned_eval = y_eval.loc[X_eval_imputed_df.index].dropna()
-                            X_final_eval = X_eval_imputed_df.loc[y_aligned_eval.index]
+                                y_aligned_eval = y_eval.loc[X_eval_imputed_df.index].dropna()
+                                X_final_eval = X_eval_imputed_df.loc[y_aligned_eval.index]
 
-                            if X_final_eval.empty or y_aligned_eval.empty:
-                                st.error("Not enough data after preprocessing for model comparison.")
-                                st.stop()
+                                if X_final_eval.empty or y_aligned_eval.empty or y_aligned_eval.nunique() < 2:
+                                    st.error("Not enough data or classes after preprocessing for model comparison.")
+                                    st.stop()
 
-                            X_train_eval, X_test_eval, y_train_eval, y_test_eval = train_test_split(X_final_eval, y_aligned_eval, test_size=0.3, random_state=42, stratify=y_aligned_eval)
+                                X_train_eval, X_test_eval, y_train_eval, y_test_eval = train_test_split(X_final_eval, y_aligned_eval, test_size=0.3, random_state=42, stratify=y_aligned_eval)
 
-                            models_to_compare = {
-                                "Logistic Regression": LogisticRegression(solver='liblinear', random_state=42, class_weight='balanced'),
-                                "Random Forest": RandomForestClassifier(random_state=42, n_estimators=50, class_weight='balanced'),
-                                "Decision Tree": DecisionTreeClassifier(random_state=42, class_weight='balanced'),
-                                "Gradient Boosting": GradientBoostingClassifier(random_state=42, n_estimators=50)
-                            }
-                            
-                            results_comparison = []
-                            roc_curves_data = []
-
-                            for name, model_instance in models_to_compare.items():
-                                model_instance.fit(X_train_eval, y_train_eval)
-                                y_pred_eval = model_instance.predict(X_test_eval)
-                                y_proba_eval = model_instance.predict_proba(X_test_eval)[:, 1]
+                                models_to_compare = {
+                                    "Logistic Regression": LogisticRegression(solver='liblinear', random_state=42, class_weight='balanced'),
+                                    "Random Forest": RandomForestClassifier(random_state=42, n_estimators=rf_n_estimators_comp, max_depth=rf_max_depth_comp, class_weight='balanced'),
+                                    "Decision Tree": DecisionTreeClassifier(random_state=42, class_weight='balanced'),
+                                    "Gradient Boosting": GradientBoostingClassifier(random_state=42, n_estimators=50) # Can add HPs for this too
+                                }
                                 
-                                report = classification_report(y_test_eval, y_pred_eval, output_dict=True, zero_division=0)
-                                results_comparison.append({
-                                    "Model": name,
-                                    "Accuracy": report['accuracy'],
-                                    "Precision (1)": report['1']['precision'] if '1' in report else report.get('weighted avg',{}).get('precision'),
-                                    "Recall (1)": report['1']['recall'] if '1' in report else report.get('weighted avg',{}).get('recall'),
-                                    "F1-score (1)": report['1']['f1-score'] if '1' in report else report.get('weighted avg',{}).get('f1-score'),
-                                    "ROC AUC": roc_auc_score(y_test_eval, y_proba_eval)
-                                })
-                                fpr, tpr, _ = roc_curve(y_test_eval, y_proba_eval)
-                                roc_curves_data.append({'fpr': fpr, 'tpr': tpr, 'label': f'{name} (AUC = {roc_auc_score(y_test_eval, y_proba_eval):.2f})'})
+                                results_comparison = []
+                                roc_curves_data = []
 
-                            st.write("#### Model Performance Metrics")
-                            st.dataframe(pd.DataFrame(results_comparison))
+                                for name, model_instance in models_to_compare.items():
+                                    model_instance.fit(X_train_eval, y_train_eval)
+                                    y_pred_eval = model_instance.predict(X_test_eval)
+                                    y_proba_eval = model_instance.predict_proba(X_test_eval)[:, 1]
+                                    
+                                    report = classification_report(y_test_eval, y_pred_eval, output_dict=True, zero_division=0)
+                                    results_comparison.append({
+                                        "Model": name,
+                                        "Accuracy": report['accuracy'],
+                                        "Precision (1)": report['1']['precision'] if '1' in report and isinstance(report['1'], dict) else report.get('weighted avg',{}).get('precision'),
+                                        "Recall (1)": report['1']['recall'] if '1' in report and isinstance(report['1'], dict) else report.get('weighted avg',{}).get('recall'),
+                                        "F1-score (1)": report['1']['f1-score'] if '1' in report and isinstance(report['1'], dict) else report.get('weighted avg',{}).get('f1-score'),
+                                        "ROC AUC": roc_auc_score(y_test_eval, y_proba_eval)
+                                    })
+                                    fpr, tpr, _ = roc_curve(y_test_eval, y_proba_eval)
+                                    roc_curves_data.append({'fpr': fpr, 'tpr': tpr, 'label': f'{name} (AUC = {roc_auc_score(y_test_eval, y_proba_eval):.2f})'})
 
-                            st.write("#### ROC Curves")
-                            fig_roc = go.Figure()
-                            for curve_data in roc_curves_data:
-                                fig_roc.add_trace(go.Scatter(x=curve_data['fpr'], y=curve_data['tpr'], mode='lines', name=curve_data['label']))
-                            fig_roc.add_trace(go.Scatter(x=[0, 1], y=[0, 1], mode='lines', name='Baseline (Random)', line=dict(dash='dash', color='grey')))
-                            fig_roc.update_layout(title="ROC Curves Comparison", xaxis_title="False Positive Rate", yaxis_title="True Positive Rate")
-                            st.plotly_chart(fig_roc, use_container_width=True)
+                                st.write("#### Model Performance Metrics")
+                                st.dataframe(pd.DataFrame(results_comparison))
 
-                        except Exception as e:
-                            st.error(f"Error during model comparison: {e}")
+                                st.write("#### ROC Curves")
+                                fig_roc = go.Figure()
+                                for curve_data in roc_curves_data:
+                                    fig_roc.add_trace(go.Scatter(x=curve_data['fpr'], y=curve_data['tpr'], mode='lines', name=curve_data['label']))
+                                fig_roc.add_trace(go.Scatter(x=[0, 1], y=[0, 1], mode='lines', name='Baseline (Random)', line=dict(dash='dash', color='grey')))
+                                fig_roc.update_layout(title="ROC Curves Comparison", xaxis_title="False Positive Rate", yaxis_title="True Positive Rate")
+                                st.plotly_chart(fig_roc, use_container_width=True)
+
+                            except Exception as e:
+                                st.error(f"Error during model comparison: {e}")
                 else:
                     st.info("Select a binary target and feature columns for model comparison.")
             else:
@@ -4298,6 +4303,101 @@ Be concise, insightful, and actionable. Structure your response clearly with hea
                     st.info("No suitable segment columns found (columns with 2-19 unique values). Run a clustering tool or create segments first.")
             else:
                 st.info("Enter your Gemini API key in the sidebar to enable AI-powered segment narratives.")
+
+        # --- ADVANCED TOOL 15: Feature Selection Utility ---
+        with st.expander("🎯 ADVANCED TOOL 15: Feature Selection Utility"):
+            st.subheader("Select Important Features for Modeling")
+            st.info("Apply feature selection techniques to identify the most relevant features for a given target variable.")
+            if not df.empty:
+                fs_target_col = st.selectbox("Select Target Variable for Feature Selection", df.columns, key="fs_target")
+                fs_feature_options = [col for col in df.columns if col != fs_target_col]
+                
+                fs_task_type = "Regression" # Default
+                if df[fs_target_col].dtype == 'object' or df[fs_target_col].nunique() <= 20:
+                    fs_task_type = "Classification"
+                st.write(f"Inferred Task Type: **{fs_task_type}**")
+
+                fs_method = st.selectbox("Feature Selection Method", 
+                                         ["SelectKBest (ANOVA F-value for Regression, Chi2 for Classification)", 
+                                          "Recursive Feature Elimination (RFE with RandomForest)"], 
+                                         key="fs_method")
+                num_features_to_select = st.slider("Number of Top Features to Select", 1, len(fs_feature_options), min(5, len(fs_feature_options)), key="fs_k_features")
+
+                if fs_target_col and fs_feature_options:
+                    if st.button("Run Feature Selection", key="run_fs"):
+                        with st.spinner("Selecting features..."):
+                            try:
+                                fs_df_prep = df[[fs_target_col] + fs_feature_options].copy().dropna()
+                                y_fs = fs_df_prep[fs_target_col]
+                                X_fs = fs_df_prep[fs_feature_options]
+
+                                # Preprocessing: Impute NaNs and One-Hot Encode
+                                numeric_transformer_fs = Pipeline(steps=[('imputer', SimpleImputer(strategy='median')), ('scaler', StandardScaler())])
+                                categorical_transformer_fs = Pipeline(steps=[('imputer', SimpleImputer(strategy='most_frequent')), ('onehot', OneHotEncoder(handle_unknown='ignore', sparse_output=False))]) # sparse_output=False for RFE
+
+                                from sklearn.compose import ColumnTransformer
+                                preprocessor_fs = ColumnTransformer(transformers=[
+                                    ('num', numeric_transformer_fs, X_fs.select_dtypes(include=np.number).columns.tolist()),
+                                    ('cat', categorical_transformer_fs, X_fs.select_dtypes(include='object').columns.tolist())
+                                ])
+                                X_fs_processed = preprocessor_fs.fit_transform(X_fs)
+                                # Get feature names after one-hot encoding
+                                try:
+                                    feature_names_processed_fs = preprocessor_fs.get_feature_names_out()
+                                except AttributeError: # Older scikit-learn
+                                    # Manual reconstruction of feature names
+                                    feature_names_processed_fs = []
+                                    for name, trans, cols in preprocessor_fs.transformers_:
+                                        if trans == 'drop' or trans == 'passthrough': continue
+                                        if hasattr(trans, 'get_feature_names_out'):
+                                            feature_names_processed_fs.extend([f"{name}__{f}" for f in trans.get_feature_names_out(cols)])
+                                        else: # Simple imputer/scaler
+                                            feature_names_processed_fs.extend(cols)
+
+                                X_fs_processed_df = pd.DataFrame(X_fs_processed, columns=feature_names_processed_fs, index=X_fs.index)
+                                
+                                # Align target
+                                y_fs_aligned = y_fs.loc[X_fs_processed_df.index]
+                                if fs_task_type == "Classification":
+                                    le_fs = LabelEncoder()
+                                    y_fs_aligned = le_fs.fit_transform(y_fs_aligned)
+
+                                selected_features_list = []
+                                if "SelectKBest" in fs_method:
+                                    from sklearn.feature_selection import SelectKBest, f_regression, chi2
+                                    score_func = f_regression if fs_task_type == "Regression" else chi2
+                                    # For chi2, data must be non-negative. MinMax scale if necessary.
+                                    if score_func == chi2:
+                                        X_fs_processed_df_non_negative = MinMaxScaler().fit_transform(X_fs_processed_df)
+                                        selector = SelectKBest(score_func=score_func, k=min(num_features_to_select, X_fs_processed_df.shape[1]))
+                                        selector.fit(X_fs_processed_df_non_negative, y_fs_aligned)
+                                    else:
+                                        selector = SelectKBest(score_func=score_func, k=min(num_features_to_select, X_fs_processed_df.shape[1]))
+                                        selector.fit(X_fs_processed_df, y_fs_aligned)
+                                    selected_features_list = X_fs_processed_df.columns[selector.get_support()].tolist()
+                                    scores_df = pd.DataFrame({'Feature': X_fs_processed_df.columns, 'Score': selector.scores_}).sort_values('Score', ascending=False)
+                                    st.write("#### Feature Scores (SelectKBest):")
+                                    st.dataframe(scores_df)
+
+                                elif "RFE" in fs_method:
+                                    from sklearn.feature_selection import RFE
+                                    estimator = RandomForestRegressor(random_state=42, n_estimators=50) if fs_task_type == "Regression" else RandomForestClassifier(random_state=42, n_estimators=50)
+                                    selector = RFE(estimator, n_features_to_select=num_features_to_select, step=1)
+                                    selector.fit(X_fs_processed_df, y_fs_aligned)
+                                    selected_features_list = X_fs_processed_df.columns[selector.support_].tolist()
+                                    ranking_df = pd.DataFrame({'Feature': X_fs_processed_df.columns, 'Ranking': selector.ranking_}).sort_values('Ranking')
+                                    st.write("#### Feature Ranking (RFE):")
+                                    st.dataframe(ranking_df)
+
+                                st.write(f"#### Top {num_features_to_select} Selected Features:")
+                                st.write(selected_features_list)
+
+                            except Exception as e:
+                                st.error(f"Error during Feature Selection: {e}")
+                else:
+                    st.info("Select a target variable to proceed with feature selection.")
+            else:
+                st.info("Upload data to use the Feature Selection Utility.")
 
         # --- ADVANCED TOOL 15: Predictive Customer Churn Model ---
         with st.expander("💔 ADVANCED TOOL 15: Predictive Customer Churn Model"):
@@ -4358,7 +4458,7 @@ Be concise, insightful, and actionable. Structure your response clearly with hea
                 st.info("Upload data to train a churn prediction model.")
 
         # --- ADVANCED TOOL 16: Dynamic Pricing Simulation (Conceptual) ---
-        with st.expander("⚖️ ADVANCED TOOL 16: Dynamic Pricing Simulation"):
+        with st.expander("⚖️ ADVANCED TOOL 17: Dynamic Pricing Simulation"):
             st.subheader("Simulate Revenue Impact of Price Changes")
             st.info("Simulate how changes in price might affect demand and revenue for a selected product/category. Requires current price, quantity, and an estimated price elasticity.")
             if categorical_cols and numeric_cols:
@@ -4406,7 +4506,7 @@ Be concise, insightful, and actionable. Structure your response clearly with hea
                 st.info("Dynamic Pricing Simulation requires categorical and numeric columns.")
 
         # --- ADVANCED TOOL 17: Sales Funnel Conversion Analysis (Conceptual) ---
-        with st.expander("💧 ADVANCED TOOL 17: Sales Funnel Conversion Analysis"):
+        with st.expander("💧 ADVANCED TOOL 18: Sales Funnel Conversion Analysis"):
             st.subheader("Analyze Conversion Rates Through a Sales Funnel")
             st.info("Define stages of your sales funnel and map them to numeric columns representing counts/values at each stage to visualize conversion rates.")
             if not df.empty:
@@ -4451,7 +4551,7 @@ Be concise, insightful, and actionable. Structure your response clearly with hea
                 st.info("Upload data to perform funnel analysis.")
 
         # --- ADVANCED TOOL 18: Inventory Optimization Suggestions (Conceptual AI) ---
-        with st.expander("📦 ADVANCED TOOL 18: AI-Powered Inventory Optimization Suggestions"):
+        with st.expander("📦 ADVANCED TOOL 19: AI-Powered Inventory Optimization Suggestions"):
             st.subheader("Get AI-Powered Suggestions for Inventory Management")
             st.info("Provide product ID, sales quantity, and optionally current inventory and lead time. AI will offer actionable suggestions.")
             if gemini_api_key:
@@ -4500,7 +4600,7 @@ Be concise, insightful, and actionable. Structure your response clearly with hea
                 st.info("Enter your Gemini API key in the sidebar for AI-powered inventory suggestions.")
 
         # --- ADVANCED TOOL 19: AI-Powered Predictive Maintenance Advisor (Conceptual) ---
-        with st.expander("🛠️ ADVANCED TOOL 19: AI-Powered Predictive Maintenance Advisor (Conceptual)"):
+        with st.expander("🛠️ ADVANCED TOOL 20: AI-Powered Predictive Maintenance Advisor (Conceptual)"):
             st.subheader("Get AI Advice on Predictive Maintenance")
             st.info("Provide equipment/product ID and relevant operational data (e.g., usage hours, error counts, age). AI will offer conceptual maintenance advice.")
             if gemini_api_key:
@@ -4549,8 +4649,8 @@ Be concise, insightful, and actionable. Structure your response clearly with hea
             else:
                 st.info("Enter your Gemini API key in the sidebar for AI-powered predictive maintenance advice.")
 
-        # --- ADVANCED TOOL 20: Scenario Planning & Impact Analysis (AI-Enhanced) ---
-        with st.expander("🚀 ADVANCED TOOL 20: Scenario Planning & Impact Analysis (AI-Enhanced)"):
+        # --- ADVANCED TOOL 21: Scenario Planning & Impact Analysis (AI-Enhanced) ---
+        with st.expander("🚀 ADVANCED TOOL 21: Scenario Planning & Impact Analysis (AI-Enhanced)"):
             st.subheader("Explore Potential Impacts of Defined Scenarios with AI")
             st.info("Describe a scenario (e.g., 'What if demand for Product X doubles due to a marketing campaign?') and let AI provide a qualitative impact assessment based on the dataset's context.")
             if gemini_api_key:
