@@ -4358,9 +4358,9 @@ Be concise, insightful, and actionable. Structure your response clearly with hea
                 st.info("Upload data to train a churn prediction model.")
 
         # --- ADVANCED TOOL 16: Dynamic Pricing Simulation (Conceptual) ---
-        with st.expander("⚖️ ADVANCED TOOL 16: Dynamic Pricing Simulation (Conceptual)"):
+        with st.expander("⚖️ ADVANCED TOOL 16: Dynamic Pricing Simulation"):
             st.subheader("Simulate Revenue Impact of Price Changes")
-            st.info("Conceptually simulate how changes in price might affect demand and revenue. Requires a product/category, current price, quantity, and an estimated price elasticity.")
+            st.info("Simulate how changes in price might affect demand and revenue for a selected product/category. Requires current price, quantity, and an estimated price elasticity.")
             if categorical_cols and numeric_cols:
                 price_sim_item_col = st.selectbox("Select Product/Category Column for Pricing", categorical_cols, key="price_sim_item")
                 price_sim_current_price_col = st.selectbox("Select Current Price Column", numeric_cols, key="price_sim_price")
@@ -4406,9 +4406,9 @@ Be concise, insightful, and actionable. Structure your response clearly with hea
                 st.info("Dynamic Pricing Simulation requires categorical and numeric columns.")
 
         # --- ADVANCED TOOL 17: Sales Funnel Conversion Analysis (Conceptual) ---
-        with st.expander("💧 ADVANCED TOOL 17: Sales Funnel Conversion Analysis (Conceptual)"):
+        with st.expander("💧 ADVANCED TOOL 17: Sales Funnel Conversion Analysis"):
             st.subheader("Analyze Conversion Rates Through a Sales Funnel")
-            st.info("Define stages of your sales funnel and provide columns representing counts at each stage to visualize conversion rates.")
+            st.info("Define stages of your sales funnel and map them to numeric columns representing counts/values at each stage to visualize conversion rates.")
             if not df.empty:
                 funnel_stages_str = st.text_input("Enter Funnel Stages (comma-separated, e.g., Website Visits, Product Views, Add to Cart, Purchase)", 
                                                   "Website Visits,Product Views,Add to Cart,Purchase", key="funnel_stages_input")
@@ -4451,9 +4451,9 @@ Be concise, insightful, and actionable. Structure your response clearly with hea
                 st.info("Upload data to perform funnel analysis.")
 
         # --- ADVANCED TOOL 18: Inventory Optimization Suggestions (Conceptual AI) ---
-        with st.expander("📦 ADVANCED TOOL 18: Inventory Optimization Suggestions (Conceptual AI)"):
+        with st.expander("📦 ADVANCED TOOL 18: AI-Powered Inventory Optimization Suggestions"):
             st.subheader("Get AI-Powered Suggestions for Inventory Management")
-            st.info("Provide product ID, sales quantity, and optionally current inventory and lead time. AI will offer conceptual advice.")
+            st.info("Provide product ID, sales quantity, and optionally current inventory and lead time. AI will offer actionable suggestions.")
             if gemini_api_key:
                 if categorical_cols and numeric_cols:
                     inv_prod_id_col = st.selectbox("Select Product ID Column", categorical_cols + numeric_cols, key="inv_prod_id")
@@ -4479,8 +4479,8 @@ Be concise, insightful, and actionable. Structure your response clearly with hea
 
                                 Based on this information, provide:
                                 1. A brief assessment of the current inventory situation (e.g., risk of stockout, overstock).
-                                2. Two actionable, conceptual suggestions for optimizing inventory for this product (e.g., reorder point, safety stock considerations, demand forecasting improvements).
-                                Keep the advice high-level and conceptual.
+                                2. Two actionable suggestions for optimizing inventory for this product (e.g., reorder point, safety stock considerations, demand forecasting improvements).
+                                Keep the advice practical and focused.
                                 """
                                 with st.spinner("AI is analyzing inventory data..."):
                                     try:
