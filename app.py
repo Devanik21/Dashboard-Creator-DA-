@@ -4499,56 +4499,55 @@ Be concise, insightful, and actionable. Structure your response clearly with hea
             else:
                 st.info("Enter your Gemini API key in the sidebar for AI-powered inventory suggestions.")
 
-        # --- ADVANCED TOOL 19: Automated Anomaly Root Cause Analysis (AI-Enhanced) ---
-        # This tool is a more focused version of the Anomaly Investigation tool, specifically using AI for root cause.
-        with st.expander("🔍 ADVANCED TOOL 19: Automated Anomaly Root Cause Analysis (AI-Enhanced)"):
-            st.subheader("AI-Powered Root Cause Suggestions for Anomalies")
-            st.info("Select a previously detected anomaly and relevant contextual features. AI will suggest potential root causes.")
+        # --- ADVANCED TOOL 19: AI-Powered Predictive Maintenance Advisor (Conceptual) ---
+        with st.expander("🛠️ ADVANCED TOOL 19: AI-Powered Predictive Maintenance Advisor (Conceptual)"):
+            st.subheader("Get AI Advice on Predictive Maintenance")
+            st.info("Provide equipment/product ID and relevant operational data (e.g., usage hours, error counts, age). AI will offer conceptual maintenance advice.")
             if gemini_api_key:
-                if 'anomalies_detected_df' in st.session_state and not st.session_state.anomalies_detected_df.empty:
-                    anomalies_for_rca_df = st.session_state.anomalies_detected_df
-                    st.write("Detected Anomalies (available for AI Root Cause Analysis):")
-                    st.dataframe(anomalies_for_rca_df.head())
-
-                    selected_anomaly_idx_rca = st.selectbox("Select Anomaly Index for AI Root Cause Analysis", anomalies_for_rca_df.index.tolist(), key="ai_rca_anomaly_idx")
+                if categorical_cols or numeric_cols: # Need some columns for ID and features
+                    pm_item_id_col = st.selectbox("Select Equipment/Product ID Column", categorical_cols + numeric_cols, key="pm_item_id")
                     
-                    if selected_anomaly_idx_rca is not None:
-                        anomaly_data_point_rca = df.loc[selected_anomaly_idx_rca]
-                        st.write(f"#### Details for Anomaly at Index: {selected_anomaly_idx_rca}")
-                        st.dataframe(anomaly_data_point_rca.to_frame().T)
+                    pm_feature_options = [col for col in numeric_cols + date_cols + categorical_cols if col != pm_item_id_col]
+                    pm_features_for_ai = st.multiselect(
+                        "Select Relevant Operational Features for AI Context",
+                        pm_feature_options,
+                        default=pm_feature_options[:min(4, len(pm_feature_options))],
+                        key="pm_ai_features",
+                        help="E.g., UsageHours, ErrorCount, AgeInMonths, LastServiceDate, Temperature"
+                    )
 
-                        contextual_features_rca = st.multiselect(
-                            "Select Contextual Features for AI Root Cause Analysis",
-                            df.columns.tolist(),
-                            default=[col for col in numeric_cols[:2] + categorical_cols[:2] if col in df.columns and col in anomaly_data_point_rca.index],
-                            key="ai_rca_context_features"
-                        )
-
-                        if st.button("🤖 Suggest Root Causes with AI", key="run_ai_rca"):
-                            with st.spinner("AI is brainstorming root causes..."):
-                                anomaly_details_str_rca = "\n".join([f"- {col}: {anomaly_data_point_rca[col]}" for col in anomaly_data_point_rca.index if pd.notna(anomaly_data_point_rca[col]) and col in contextual_features_rca])
+                    if pm_item_id_col and pm_features_for_ai:
+                        selected_item_pm_advice = st.selectbox("Select a Specific Equipment/Product for Maintenance Advice", df[pm_item_id_col].unique()[:100], key="pm_select_item_advice") # Limit for dropdown
+                        
+                        if st.button("🤖 Get Predictive Maintenance Advice", key="run_pm_advice_ai"):
+                            item_data_pm = df[df[pm_item_id_col] == selected_item_pm_advice].iloc[0] if not df[df[pm_item_id_col] == selected_item_pm_advice].empty else None
+                            if item_data_pm is not None:
+                                item_details_str_pm = "\n".join([f"- {feat}: {item_data_pm.get(feat, 'N/A')}" for feat in pm_features_for_ai])
                                 
-                                prompt_ai_rca = f"""
-                                You are an expert root cause analyst. An anomalous data point has been identified:
-                                Anomaly Index: {selected_anomaly_idx_rca}
-                                Key Feature Values for this Anomaly:
-                                {anomaly_details_str_rca}
+                                pm_prompt = f"""
+                                You are a predictive maintenance expert. For an equipment/product '{selected_item_pm_advice}', the following operational data is provided:
+                                {item_details_str_pm}
 
-                                Considering these feature values, suggest 3-5 plausible and distinct root causes for why this data point might be anomalous. 
-                                For each suggested root cause, briefly explain your reasoning.
-                                Think about potential data entry errors, system glitches, unusual real-world events, specific customer behaviors, or product characteristics.
+                                Based on this information, provide:
+                                1. A brief conceptual assessment of its current operational state or potential risks (e.g., high usage, nearing end-of-life based on age, frequent errors).
+                                2. Two high-level, conceptual suggestions for predictive maintenance actions or monitoring strategies for this item.
+                                Keep the advice general and conceptual, focusing on types of actions rather than specific technical details.
                                 """
                                 try:
-                                    model_ai_rca = genai.GenerativeModel("gemini-2.0-flash")
-                                    response_ai_rca = model_ai_rca.generate_content(prompt_ai_rca)
-                                    st.markdown("#### AI Suggested Root Causes for Anomaly:")
-                                    st.markdown(response_ai_rca.text)
+                                    model_pm_advice = genai.GenerativeModel("gemini-2.0-flash")
+                                    response_pm_advice = model_pm_advice.generate_content(pm_prompt)
+                                    st.markdown("#### AI Predictive Maintenance Advice:")
+                                    st.markdown(response_pm_advice.text)
                                 except Exception as e:
-                                    st.error(f"Gemini API Error for Root Cause Analysis: {str(e)}")
+                                    st.error(f"Gemini API Error for Predictive Maintenance Advice: {str(e)}")
+                            else:
+                                st.warning(f"No data found for equipment/product '{selected_item_pm_advice}'.")
+                    else:
+                        st.info("Select an ID column and relevant operational features.")
                 else:
-                    st.info("Run the 'Anomaly Detection Dashboard' first to identify anomalies for root cause analysis.")
+                    st.info("Predictive Maintenance Advisor requires ID and feature columns.")
             else:
-                st.info("Enter your Gemini API key in the sidebar for AI-powered root cause suggestions.")
+                st.info("Enter your Gemini API key in the sidebar for AI-powered predictive maintenance advice.")
 
         # --- ADVANCED TOOL 20: Scenario Planning & Impact Analysis (AI-Enhanced) ---
         with st.expander("🚀 ADVANCED TOOL 20: Scenario Planning & Impact Analysis (AI-Enhanced)"):
