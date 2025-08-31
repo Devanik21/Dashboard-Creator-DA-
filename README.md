@@ -6,9 +6,7 @@ This Streamlit application empowers users to upload datasets and perform a wide 
 
 ---
 
-🧪 **Demo**
-
-🚀 **Github repo:** [https://63uxugggjkkrghy7vuxkeh.streamlit.app]()
+🧪 **Demo**  [https://63uxugggjkkrghy7vuxkeh.streamlit.app]()
 
 
 
