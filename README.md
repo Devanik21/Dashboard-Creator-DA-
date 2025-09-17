@@ -145,7 +145,7 @@ This application is designed to be a comprehensive toolkit for data analysts, sc
 
 👨‍💻 **Author**
 
-*   **Devanik Saha**
+*   **Devanik**
     *   GitHub: [Devanik21](https://github.com/Devanik21)
     *   LinkedIn: [Devanik Debnath](https://www.linkedin.com/in/devanik/)
     *   *National Institute of Technology | ECE | Passionate about AI, ML, and Cryptography*
