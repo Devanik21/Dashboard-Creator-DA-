@@ -1,5 +1,5 @@
 # 📊 Advanced Data Explorer & Visualizer 🔮
-
+ 
 **Your All-in-One Solution for Interactive Data Analysis, Visualization, and AI-Powered Insights.**
 
 This Streamlit application empowers users to upload datasets and perform a wide array of analyses, from basic data profiling and cleaning to advanced machine learning, time series forecasting, geospatial visualization, and AI-driven insights using Google's Gemini API.
