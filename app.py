@@ -222,7 +222,7 @@ def get_common_columns(datasets_dict, col_type='all'):
         return [col for col in common_cols_list if pd.api.types.is_datetime64_any_dtype(first_df[col])]
     return []
 
-st.sidebar.header("🤖 AI-Powered Assistance")
+st.sidebar.header("🪄 AI-Powered Assistance")
 gemini_api_key = st.sidebar.text_input("Gemini API Key", type="password")
 if gemini_api_key:
     try:
@@ -3001,7 +3001,7 @@ Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
                 st.info("Survival Analysis requires numeric columns for duration and a binary column for event observation.")
 
         # NEW TOOL 4: AI-Powered Chart-to-Text Summarizer (Gemini)
-        with st.expander("🤖 AI Chart-to-Text Summarizer (Gemini)"):
+        with st.expander("🪄 AI Chart-to-Text Summarizer (Gemini)"):
             st.subheader("Get AI-Generated Summaries of Your Charts")
             st.info("Select columns to generate a basic chart, then ask AI to summarize its insights.")
             if gemini_api_key:
@@ -3875,7 +3875,7 @@ awards_won >= 40
                             default=[col for col in numeric_cols[:3] + categorical_cols[:2] if col in df.columns],
                             key="ai_anomaly_context_features_merged"
                         )
-                        if st.button("🤖 Get AI Explanation for Anomaly", key="run_ai_anomaly_explanation_merged"):
+                        if st.button("🪄 Get AI Explanation for Anomaly", key="run_ai_anomaly_explanation_merged"):
                             with st.spinner("AI is investigating the anomaly..."):
                                 anomaly_details_str_merged = "\n".join([f"- {col}: {anomaly_data_point_ai[col]}" for col in anomaly_data_point_ai.index if pd.notna(anomaly_data_point_ai[col])])
                                 comparison_str_merged = ""
@@ -4564,7 +4564,7 @@ Be concise, insightful, and actionable. Structure your response clearly with hea
                     if inv_prod_id_col and inv_sales_qty_col:
                         selected_prod_inv_opt = st.selectbox("Select a Specific Product for Inventory Advice", df[inv_prod_id_col].unique()[:100], key="inv_opt_select_prod") # Limit for dropdown
                         
-                        if st.button("🤖 Get Inventory Optimization Advice", key="run_inv_opt_ai"):
+                        if st.button("🪄 Get Inventory Optimization Advice", key="run_inv_opt_ai"):
                             prod_data_inv = df[df[inv_prod_id_col] == selected_prod_inv_opt].iloc[0] if not df[df[inv_prod_id_col] == selected_prod_inv_opt].empty else None
                             if prod_data_inv is not None:
                                 sales_qty = prod_data_inv[inv_sales_qty_col]
@@ -4619,7 +4619,7 @@ Be concise, insightful, and actionable. Structure your response clearly with hea
                     if pm_item_id_col and pm_features_for_ai:
                         selected_item_pm_advice = st.selectbox("Select a Specific Equipment/Product for Maintenance Advice", df[pm_item_id_col].unique()[:100], key="pm_select_item_advice") # Limit for dropdown
                         
-                        if st.button("🤖 Get Predictive Maintenance Advice", key="run_pm_advice_ai"):
+                        if st.button("🪄 Get Predictive Maintenance Advice", key="run_pm_advice_ai"):
                             item_data_pm = df[df[pm_item_id_col] == selected_item_pm_advice].iloc[0] if not df[df[pm_item_id_col] == selected_item_pm_advice].empty else None
                             if item_data_pm is not None:
                                 item_details_str_pm = "\n".join([f"- {feat}: {item_data_pm.get(feat, 'N/A')}" for feat in pm_features_for_ai])
