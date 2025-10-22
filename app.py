@@ -78,7 +78,7 @@ def check_password():
 
     # If max attempts reached, lock the app
     if st.session_state.password_attempts >= 3:
-        st.warning("🚨 Too many incorrect attempts. Access denied.")
+        st.warning("🚨 Too many incorrect attempts. Access denied. Please refresh the page to try again.")
         st.stop()
 
     # Show password input form
@@ -4362,7 +4362,13 @@ Be concise, insightful, and actionable. Structure your response clearly with hea
                                          ["SelectKBest (ANOVA F-value for Regression, Chi2 for Classification)", 
                                           "Recursive Feature Elimination (RFE with RandomForest)"], 
                                          key="fs_method")
-                num_features_to_select = st.slider("Number of Top Features to Select", 1, len(fs_feature_options), min(5, len(fs_feature_options)), key="fs_k_features")
+                
+                num_features_to_select = 1 # Default if only one feature is available
+                if len(fs_feature_options) > 1:
+                    num_features_to_select = st.slider("Number of Top Features to Select", 1, len(fs_feature_options), min(5, len(fs_feature_options)), key="fs_k_features")
+                elif fs_feature_options: # Exactly one feature
+                    st.info("Only one feature is available for selection.")
+                # If no features, the button logic below will handle it.
 
                 if fs_target_col and fs_feature_options:
                     if st.button("Run Feature Selection", key="run_fs"):
