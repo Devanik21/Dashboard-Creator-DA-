@@ -404,7 +404,7 @@ except Exception as e:
 
 # Main title with metrics
 st.title("Advanced Data Explorer & Visualizer")
-st.image("d3.jpg", caption="Made for Analysts. Loved by Scientists.", use_container_width=True)
+#st.image("d3.jpg", caption="Made for Analysts. Loved by Scientists.", use_container_width=True)
 st.markdown("### 🔮 Upload your data to unlock insights and visualizations!")
 
 # NEW FEATURE 2: Multiple file upload support
@@ -5080,4 +5080,4 @@ with st.sidebar:
     st.image("d1.jpg",caption="Decode with design", use_container_width=True)
 
 
-st.image("d4.jpg", caption="Data Analysis meets AI meets Elegance.", use_container_width=True)
+
