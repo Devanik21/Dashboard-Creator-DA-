@@ -156,12 +156,13 @@ def set_page_background_and_style(file_path):
     }}
     
     /* App-wide text styling */
-    body, h1, h2, h3, h4, h5, h6, p, div, span, label, .stMarkdown {{
+    /* The div selector is modified with :not() to exclude icon containers, fixing a bug where icons were replaced by text. */
+    body, h1, h2, h3, h4, h5, h6, p, div:not([data-testid="stExpanderIcon"]):not([data-testid="stSidebarNav"]), span, label, .stMarkdown {
         color: #E2E8F0 !important;
         font-family: 'Inter', -apple-system, system-ui, sans-serif !important;
         font-size: 1.02rem; /* Slightly larger base font size for readability */
         line-height: 1.6;
-    }}
+    }
     
     h1, h2, h3 {{
         font-weight: 300 !important;
@@ -312,7 +313,7 @@ def set_page_background_and_style(file_path):
     st.markdown(css_text, unsafe_allow_html=True)
 
 # --- APP LAYOUT ---
-set_page_background_and_style('Gemini_Generated_Image_caa8yrcaa8yrcaa8.png')
+set_page_background_and_style('Gemini_Generated_Image_phsbymphsbymphsb.png')
 
 # --- PASSWORD PROTECTION ---
 def check_password():
@@ -5077,6 +5078,3 @@ footer_col1, footer_col2, footer_col3 = st.columns(3)
 with footer_col1: st.info(f"🕒 Session: {datetime.now().strftime('%H:%M:%S')}")
 with footer_col2: st.info(f"🎨 Theme: {selected_theme}")
 with footer_col3: st.info(f"📚 Datasets: {len(datasets) if uploaded_files and datasets else 0}")
-
-
-
