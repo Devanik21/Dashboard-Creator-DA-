@@ -125,7 +125,7 @@ def set_page_background_and_style(file_path):
     textarea, input {{
         background: transparent !important;
         border: none !important;
-        color: rgba(200, 200, 200, 0.9) !important;
+        color: #E2E8F0 !important;
         transition: all 0.3s ease !important;
         box-shadow: none !important;
     }}
@@ -135,14 +135,14 @@ def set_page_background_and_style(file_path):
         background: transparent !important;
         border: none !important;
         box-shadow: none !important;
-        color: rgba(220, 220, 220, 1) !important;
+        color: #FFFFFF !important; /* Brighter on focus/hover */
     }}
     
     /* Pure transparent buttons - no borders */
     button {{
         background: transparent !important;
         border: none !important;
-        color: rgba(200, 200, 200, 0.85) !important;
+        color: #E2E8F0 !important;
         transition: all 0.3s ease !important;
         box-shadow: none !important;
     }}
@@ -151,14 +151,16 @@ def set_page_background_and_style(file_path):
         background: transparent !important;
         border: none !important;
         box-shadow: none !important;
-        color: rgba(240, 240, 240, 1) !important;
+        color: #FFFFFF !important; /* Brighter on hover */
         transform: none !important;
     }}
     
-    /* Gray-white text throughout */
+    /* App-wide text styling */
     body, h1, h2, h3, h4, h5, h6, p, div, span, label, .stMarkdown {{
-        color: rgba(200, 200, 200, 0.9) !important;
-        font-family: 'Inter', -apple-system, system-ui, sans-serif;
+        color: #E2E8F0 !important;
+        font-family: 'Inter', -apple-system, system-ui, sans-serif !important;
+        font-size: 1.02rem; /* Slightly larger base font size for readability */
+        line-height: 1.6;
     }}
     
     h1, h2, h3 {{
@@ -169,12 +171,12 @@ def set_page_background_and_style(file_path):
     
     h1 {{
         font-size: 3rem !important;
-        color: rgba(220, 220, 220, 0.95) !important;
+        color: #FFFFFF !important; /* Make main title stand out */
     }}
     
     .subtitle {{
-        color: rgba(180, 180, 180, 0.8);
-        font-size: 1.1rem;
+        color: rgba(226, 232, 240, 0.8); /* Subtler version of main text color */
+        font-size: 1.1rem; /* Keep subtitle size */
         margin-top: -10px;
         letter-spacing: 3px;
         font-weight: 300;
@@ -201,15 +203,15 @@ def set_page_background_and_style(file_path):
         border: none;
         padding: 4px 10px;
         margin: 3px;
-        font-size: 0.85rem;
-        color: rgba(180, 180, 180, 0.8);
+        font-size: 0.9rem; /* Slightly larger badge text */
+        color: rgba(226, 232, 240, 0.8);
         transition: all 0.3s ease;
     }}
     
     .file-badge:hover {{
         background: transparent;
         border: none;
-        color: rgba(220, 220, 220, 1);
+        color: #FFFFFF;
     }}
     
     /* Data tool buttons - no special styling */
@@ -242,13 +244,14 @@ def set_page_background_and_style(file_path):
     
     /* Placeholder text */
     ::placeholder {{
-        color: rgba(150, 150, 150, 0.5) !important;
+        color: rgba(226, 232, 240, 0.5) !important;
     }}
     
     /* Selectbox - transparent */
     div[data-baseweb="select"] > div {{
         background: transparent !important;
         border: none !important;
+        color: #E2E8F0 !important; /* Ensure selectbox text is correct color */
     }}
     
     div[data-baseweb="select"]:hover > div {{
@@ -259,8 +262,8 @@ def set_page_background_and_style(file_path):
     
     /* Footer */
     .footer {{
-        font-size: 0.85rem;
-        color: rgba(160, 160, 160, 0.7);
+        font-size: 0.9rem;
+        color: rgba(226, 232, 240, 0.7);
         text-align: center;
         font-weight: 300;
         letter-spacing: 1px;
@@ -286,13 +289,13 @@ def set_page_background_and_style(file_path):
     
     /* Caption text */
     .stCaptionContainer, small {{
-        color: rgba(160, 160, 160, 0.7) !important;
+        color: rgba(226, 232, 240, 0.7) !important;
         font-weight: 300;
     }}
     
     /* File uploader */
     .stFileUploader label {{
-        color: rgba(180, 180, 180, 0.8) !important;
+        color: #E2E8F0 !important;
     }}
     
     .stFileUploader section {{
@@ -309,7 +312,7 @@ def set_page_background_and_style(file_path):
     st.markdown(css_text, unsafe_allow_html=True)
 
 # --- APP LAYOUT ---
-set_page_background_and_style('d3.jpg')
+set_page_background_and_style('bg_1.jpg')
 
 # --- PASSWORD PROTECTION ---
 def check_password():
@@ -348,8 +351,8 @@ def check_password():
 
 check_password()
 
-#with st.sidebar:
- #   st.image("d2.jpg", caption="From rows to revelations.", use_container_width=True)
+with st.sidebar:
+    st.image("d2.jpg", caption="From rows to revelations.", use_container_width=True)
 
 # Sidebar configuration
 st.sidebar.header("🛠️ Dashboard Controls & Options")
@@ -404,7 +407,7 @@ except Exception as e:
 
 # Main title with metrics
 st.title("Advanced Data Explorer & Visualizer")
-#st.image("d3.jpg", caption="Made for Analysts. Loved by Scientists.", use_container_width=True)
+st.image("d3.jpg", caption="Made for Analysts. Loved by Scientists.", use_container_width=True)
 st.markdown("### 🔮 Upload your data to unlock insights and visualizations!")
 
 # NEW FEATURE 2: Multiple file upload support
@@ -5080,4 +5083,4 @@ with st.sidebar:
     st.image("d1.jpg",caption="Decode with design", use_container_width=True)
 
 
-
+st.image("d4.jpg", caption="Data Analysis meets AI meets Elegance.", use_container_width=True)
