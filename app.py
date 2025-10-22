@@ -126,7 +126,6 @@ def set_page_background_and_style(file_path):
         background: transparent !important;
         border: none !important;
         color: #E2E8F0 !important;
-        text-shadow: 1px 1px 2px rgba(0,0,0,0.5); /* Shadow for input text */
         transition: all 0.3s ease !important;
         box-shadow: none !important;
     }}
@@ -144,7 +143,6 @@ def set_page_background_and_style(file_path):
         background: transparent !important;
         border: none !important;
         color: #E2E8F0 !important;
-        text-shadow: 1px 1px 2px rgba(0,0,0,0.5); /* Shadow for button text */
         transition: all 0.3s ease !important;
         box-shadow: none !important;
     }}
@@ -161,24 +159,19 @@ def set_page_background_and_style(file_path):
     body, h1, h2, h3, h4, h5, h6, p, div, span, label, .stMarkdown {{
         color: #E2E8F0 !important;
         font-family: 'Inter', -apple-system, system-ui, sans-serif !important;
-        font-weight: 500 !important; /* Bolder base font for thickness */
-        text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.8); /* Strong shadow for readability */
-        font-size: 1.02rem;
+        font-size: 1.02rem; /* Slightly larger base font size for readability */
         line-height: 1.6;
     }}
     
     h1, h2, h3 {{
-        font-weight: 600 !important; /* Even bolder headers */
+        font-weight: 300 !important;
         text-align: center;
         letter-spacing: 2px;
-        text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.7); /* Stronger shadow for headers */
     }}
     
     h1 {{
         font-size: 3rem !important;
         color: #FFFFFF !important; /* Make main title stand out */
-        font-weight: 700 !important; /* Extra bold for main title */
-        text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.9); /* Strongest shadow for main title */
     }}
     
     .subtitle {{
@@ -259,7 +252,6 @@ def set_page_background_and_style(file_path):
         background: transparent !important;
         border: none !important;
         color: #E2E8F0 !important; /* Ensure selectbox text is correct color */
-        text-shadow: 1px 1px 2px rgba(0,0,0,0.5); /* Shadow for selectbox text */
     }}
     
     div[data-baseweb="select"]:hover > div {{
@@ -320,7 +312,7 @@ def set_page_background_and_style(file_path):
     st.markdown(css_text, unsafe_allow_html=True)
 
 # --- APP LAYOUT ---
-set_page_background_and_style('Gemini_Generated_Image_caa8yrcaa8yrcaa8.png')
+set_page_background_and_style('Gemini_Generated_Image_phsbymphsbymphsb.png')
 
 # --- PASSWORD PROTECTION ---
 def check_password():
@@ -5085,3 +5077,6 @@ footer_col1, footer_col2, footer_col3 = st.columns(3)
 with footer_col1: st.info(f"🕒 Session: {datetime.now().strftime('%H:%M:%S')}")
 with footer_col2: st.info(f"🎨 Theme: {selected_theme}")
 with footer_col3: st.info(f"📚 Datasets: {len(datasets) if uploaded_files and datasets else 0}")
+
+
+
