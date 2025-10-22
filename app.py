@@ -25,6 +25,7 @@ from sklearn.cluster import DBSCAN # For Geospatial Clustering # For ROC AUC
 import google.generativeai as genai
 import io
 import base64
+import os
 import re
 from datetime import datetime, timedelta
 import time # Import the time module
@@ -62,38 +63,253 @@ from prophet.plot import plot_plotly as prophet_plot_plotly, plot_components_plo
 # Page configuration
 from sklearn.ensemble import GradientBoostingClassifier
 st.set_page_config(layout="wide", page_title="Advanced Dashboard Creator", page_icon="📊")
-
-# --- BACKGROUND IMAGE ---
-@st.cache_data
+ 
+# --- FUNCTIONS ---
 def get_base64_of_bin_file(bin_file):
-    """Reads a binary file and returns its base64 encoded string."""
+    """Encodes a binary file to a base64 string."""
     with open(bin_file, 'rb') as f:
         data = f.read()
     return base64.b64encode(data).decode()
+ 
+def set_page_background_and_style(file_path):
+    """Sets the background image and applies custom CSS styles."""
+    if not os.path.exists(file_path):
+        st.error(f"Error: Background image not found at '{file_path}'.")
+        return
+    
+    base64_img = get_base64_of_bin_file(file_path)
+    
+    css_text = f'''
+    <style>
+    .stApp {{
+        background-image: url("data:image/png;base64,{base64_img}");
+        background-size: cover;
+        background-position: center center;
+        background-repeat: no-repeat;
+        background-attachment: fixed;
+    }}
+    
+    /* 100% Pure Transparency - No boxes, no borders */
+    [data-testid="stHeader"],
+    [data-testid="stSidebar"],
+    [data-testid="stSidebar"] > div,
+    [data-testid="stSidebarContent"],
+    [data-testid="stBottomBlockContainer"],
+    [data-testid="stChatInputContainer"],
+    [data-testid="stFileUploader"],
+    [data-testid="stFileUploaderDropzone"],
+    [data-testid="stFileUploaderDropzoneInstructions"],
+    .stTextArea,
+    .stTextInput,
+    .stChatMessage,
+    [data-testid="stChatMessageContent"],
+    .element-container,
+    .stMarkdown,
+    section[data-testid="stSidebar"],
+    .stSelectbox,
+    div[data-baseweb="select"],
+    .stExpander,
+    [data-testid="stSidebar"]::before {{
+        background: transparent !important;
+        backdrop-filter: none !important;
+        border: none !important;
+        box-shadow: none !important;
+    }}
+    
+    /* Remove all borders from sidebar */
+    [data-testid="stSidebar"] {{
+        border-right: none !important;
+    }}
+    
+    /* Pure transparent inputs - no borders */
+    textarea, input {{
+        background: transparent !important;
+        border: none !important;
+        color: rgba(200, 200, 200, 0.9) !important;
+        transition: all 0.3s ease !important;
+        box-shadow: none !important;
+    }}
+    
+    textarea:hover, input:hover,
+    textarea:focus, input:focus {{
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        color: rgba(220, 220, 220, 1) !important;
+    }}
+    
+    /* Pure transparent buttons - no borders */
+    button {{
+        background: transparent !important;
+        border: none !important;
+        color: rgba(200, 200, 200, 0.85) !important;
+        transition: all 0.3s ease !important;
+        box-shadow: none !important;
+    }}
+    
+    button:hover {{
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        color: rgba(240, 240, 240, 1) !important;
+        transform: none !important;
+    }}
+    
+    /* Gray-white text throughout */
+    body, h1, h2, h3, h4, h5, h6, p, div, span, label, .stMarkdown {{
+        color: rgba(200, 200, 200, 0.9) !important;
+        font-family: 'Inter', -apple-system, system-ui, sans-serif;
+    }}
+    
+    h1, h2, h3 {{
+        font-weight: 300 !important;
+        text-align: center;
+        letter-spacing: 2px;
+    }}
+    
+    h1 {{
+        font-size: 3rem !important;
+        color: rgba(220, 220, 220, 0.95) !important;
+    }}
+    
+    .subtitle {{
+        color: rgba(180, 180, 180, 0.8);
+        font-size: 1.1rem;
+        margin-top: -10px;
+        letter-spacing: 3px;
+        font-weight: 300;
+    }}
+    
+    /* Transparent chat messages - no borders */
+    .stChatMessage {{
+        background: transparent !important;
+        border: none !important;
+        padding-left: 0px !important;
+        margin: 8px 0 !important;
+    }}
+    
+    .stChatMessage:hover {{
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+    }}
+    
+    /* File badges - pure transparent */
+    .file-badge {{
+        display: inline-block;
+        background: transparent;
+        border: none;
+        padding: 4px 10px;
+        margin: 3px;
+        font-size: 0.85rem;
+        color: rgba(180, 180, 180, 0.8);
+        transition: all 0.3s ease;
+    }}
+    
+    .file-badge:hover {{
+        background: transparent;
+        border: none;
+        color: rgba(220, 220, 220, 1);
+    }}
+    
+    /* Data tool buttons - no special styling */
+    .data-tool-button button {{
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+    }}
 
-def set_bg_from_local(image_file):
-    """Sets a background image for the app and makes the sidebar transparent."""
-    try:
-        bin_str = get_base64_of_bin_file(image_file)
-        page_bg_img = f'''
-        <style>
-        [data-testid="stAppViewContainer"] > .main {{
-            background-image: url("data:image/jpeg;base64,{bin_str}");
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-            background-attachment: fixed;
-        }}
-        [data-testid="stSidebar"] > div:first-child {{
-            background-color: transparent;
-        }}
-        </style>
-        '''
-        st.markdown(page_bg_img, unsafe_allow_html=True)
-    except FileNotFoundError:
-        st.warning(f"Background image '{image_file}' not found. Please ensure it's in the correct directory.")
+    .data-tool-button button:hover {{
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+    }}
+    
+    /* Minimal scrollbar */
+    ::-webkit-scrollbar {{
+        width: 6px;
+        background: transparent;
+    }}
+    
+    ::-webkit-scrollbar-thumb {{
+        background: rgba(150, 150, 150, 0.3);
+        border-radius: 3px;
+    }}
+    
+    ::-webkit-scrollbar-thumb:hover {{
+        background: rgba(180, 180, 180, 0.5);
+    }}
+    
+    /* Placeholder text */
+    ::placeholder {{
+        color: rgba(150, 150, 150, 0.5) !important;
+    }}
+    
+    /* Selectbox - transparent */
+    div[data-baseweb="select"] > div {{
+        background: transparent !important;
+        border: none !important;
+    }}
+    
+    div[data-baseweb="select"]:hover > div {{
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+    }}
+    
+    /* Footer */
+    .footer {{
+        font-size: 0.85rem;
+        color: rgba(160, 160, 160, 0.7);
+        text-align: center;
+        font-weight: 300;
+        letter-spacing: 1px;
+    }}
+    
+    hr {{
+        opacity: 0.1;
+        border-color: rgba(200, 200, 200, 0.15);
+        box-shadow: none;
+    }}
+    
+    /* Expander - transparent */
+    .stExpander {{
+        background: transparent !important;
+        border: none !important;
+    }}
+    
+    .stExpander:hover {{
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+    }}
+    
+    /* Caption text */
+    .stCaptionContainer, small {{
+        color: rgba(160, 160, 160, 0.7) !important;
+        font-weight: 300;
+    }}
+    
+    /* File uploader */
+    .stFileUploader label {{
+        color: rgba(180, 180, 180, 0.8) !important;
+    }}
+    
+    .stFileUploader section {{
+        background: transparent !important;
+        border: none !important;
+    }}
+    
+    .stFileUploader section:hover {{
+        background: transparent !important;
+        border: none !important;
+    }}
+    </style>
+    '''
+    st.markdown(css_text, unsafe_allow_html=True)
 
-set_bg_from_local('bg_1.jpg')
+# --- APP LAYOUT ---
+set_page_background_and_style('bg_1.jpg')
 
 # --- PASSWORD PROTECTION ---
 def check_password():
@@ -134,123 +350,6 @@ check_password()
 
 with st.sidebar:
     st.image("d2.jpg", caption="From rows to revelations.", use_container_width=True)
-
-
-# Custom CSS for better styling
-st.markdown("""
-<style>
-/* General App Style for Dark Theme */
-body {
-    color: #E0E0E0; /* Lighter text for dark backgrounds */
-}
-
-.metric-card {
-    background: linear-gradient(135deg, #2C5364 0%, #203A43 50%, #0F2027 100%); /* Dark blue/grey gradient */
-    padding: 25px;
-    border-radius: 12px;
-    color: #FFFFFF;
-    text-align: center;
-    margin: 10px 0;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-    border: 1px solid #4A5568; /* Subtle border */
-}
-.metric-card h3 {
-    font-size: 2.5em; /* Larger metric numbers */
-    margin-bottom: 5px;
-    font-weight: 700;
-}
-.metric-card p {
-    font-size: 1em;
-    font-weight: 300;
-}
-
-.insight-box {
-    background: #2D3748; /* Darker background for insight box */
-    padding: 20px;
-    border-left: 5px solid #38B2AC; /* Teal accent border */
-    border-radius: 8px;
-    margin: 15px 0;
-    color: #E2E8F0; /* Lighter text */
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-}
-.insight-box strong {
-    color: #63B3ED; /* Brighter color for strong text */
-}
-
-/* Styling for expander headers */
-div[data-testid="stExpander"] > div:first-child {
-    background-color: #2D3748; /* Darker background for expander header */
-    padding: 10px 15px !important;
-    border-radius: 8px 8px 0 0;
-    border-bottom: 1px solid #4A5568;
-}
-div[data-testid="stExpander"] > div:first-child summary {
-    color: #A0AEC0; /* Lighter text for expander title */
-    font-weight: 600;
-    font-size: 1.1em;
-}
-div[data-testid="stExpander"] > div:first-child summary:hover {
-    color: #E2E8F0;
-}
-
-/* General Button Styling */
-.stButton > button {
-    border: 1px solid #38B2AC;
-    background-color: transparent;
-    color: #38B2AC;
-    padding: 10px 20px;
-    border-radius: 8px;
-    font-weight: 600;
-    transition: all 0.3s ease;
-}
-.stButton > button:hover {
-    background-color: #38B2AC;
-    color: #1A202C;
-    box-shadow: 0 2px 10px rgba(56, 178, 172, 0.4);
-}
-.stButton > button:active {
-    background-color: #2C7A7B !important;
-    color: #1A202C !important;
-}
-
-/* Styling for input widgets */
-div[data-testid="stSelectbox"] label, div[data-testid="stMultiSelect"] label,
-div[data-testid="stTextInput"] label, div[data-testid="stSlider"] label,
-div[data-testid="stColorPicker"] label, div[data-testid="stNumberInput"] label {
-    font-weight: 500;
-    color: #CBD5E0; /* Lighter label text for dark theme */
-}
-
-/* CSS for Column Summary Cards */
-.column-summary-card {
-    background: #2D3748; /* Darker background, consistent with insight-box */
-    padding: 15px;
-    border-radius: 8px;
-    color: #E2E8F0; /* Lighter text */
-    margin-bottom: 15px; /* Space between cards */
-    border: 1px solid #4A5568; /* Subtle border */
-    height: 100%; /* Ensure cards in a row have same height if content varies slightly */
-}
-.column-summary-card h4 {
-    font-size: 1.1em;
-    color: #63B3ED; /* Brighter color for column name */
-    margin-bottom: 8px;
-    border-bottom: 1px solid #4A5568;
-    padding-bottom: 5px;
-    white-space: nowrap; /* Prevent long names from wrapping too much */
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-.column-summary-card p {
-    font-size: 0.9em;
-    margin-bottom: 4px;
-}
-.column-summary-card p strong {
-    font-weight: 500;
-    color: #A0AEC0; /* Lighter grey for labels */
-}
-</style>
-""", unsafe_allow_html=True)
 
 # Sidebar configuration
 st.sidebar.header("🛠️ Dashboard Controls & Options")
