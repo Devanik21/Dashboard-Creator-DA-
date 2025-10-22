@@ -125,8 +125,9 @@ def set_page_background_and_style(file_path):
     textarea, input {{
         background: transparent !important;
         border: none !important;
-        color: #E2E8F0 !important;
+        color: #F0F2F5 !important; /* Brighter text for inputs */
         transition: all 0.3s ease !important;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.5); /* Readability on image */
         box-shadow: none !important;
     }}
     
@@ -142,8 +143,9 @@ def set_page_background_and_style(file_path):
     button {{
         background: transparent !important;
         border: none !important;
-        color: #E2E8F0 !important;
+        color: #F0F2F5 !important; /* Brighter text for buttons */
         transition: all 0.3s ease !important;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.5); /* Readability on image */
         box-shadow: none !important;
     }}
     
@@ -158,29 +160,32 @@ def set_page_background_and_style(file_path):
     /* App-wide text styling */
     /* The div selector is modified with :not() to exclude icon containers, fixing a bug where icons were replaced by text. */
     body, h1, h2, h3, h4, h5, h6, p, label, .stMarkdown {{
-        color: #E2E8F0 !important;
+        color: #F0F2F5 !important; /* Brighter off-white for better contrast */
         font-family: 'Inter', -apple-system, system-ui, sans-serif !important;
-        font-size: 1.02rem; /* Slightly larger base font size for readability */
+        font-size: 1rem; /* Standard base font size for readability */
         line-height: 1.6;
+        text-shadow: 0 1px 3px rgba(0,0,0,0.6); /* Universal text shadow for readability */
     }}
     
     h1, h2, h3 {{
-        font-weight: 300 !important;
+        font-weight: 500 !important; /* Bolder weight for headings */
         text-align: center;
-        letter-spacing: 2px;
+        letter-spacing: 1px; /* Tighter letter spacing for readability */
     }}
     
     h1 {{
         font-size: 3rem !important;
         color: #FFFFFF !important; /* Make main title stand out */
+        font-weight: 600 !important; /* Semibold for main title */
+        letter-spacing: 1.5px;
     }}
     
     .subtitle {{
-        color: rgba(226, 232, 240, 0.8); /* Subtler version of main text color */
+        color: rgba(240, 242, 245, 0.85); /* Brighter subtitle color */
         font-size: 1.1rem; /* Keep subtitle size */
         margin-top: -10px;
-        letter-spacing: 3px;
-        font-weight: 300;
+        letter-spacing: 1.5px; /* Tighter letter spacing */
+        font-weight: 400; /* Bolder subtitle */
     }}
     
     /* Transparent chat messages - no borders */
@@ -245,14 +250,14 @@ def set_page_background_and_style(file_path):
     
     /* Placeholder text */
     ::placeholder {{
-        color: rgba(226, 232, 240, 0.5) !important;
+        color: rgba(240, 242, 245, 0.5) !important; /* Adjusted for new base color */
     }}
     
     /* Selectbox - transparent */
     div[data-baseweb="select"] > div {{
         background: transparent !important;
         border: none !important;
-        color: #E2E8F0 !important; /* Ensure selectbox text is correct color */
+        color: #F0F2F5 !important; /* Ensure selectbox text is correct color */
     }}
     
     div[data-baseweb="select"]:hover > div {{
@@ -290,7 +295,7 @@ def set_page_background_and_style(file_path):
     
     /* Caption text */
     .stCaptionContainer, small {{
-        color: rgba(226, 232, 240, 0.7) !important;
+        color: rgba(240, 242, 245, 0.8) !important; /* Slightly brighter caption */
         font-weight: 300;
     }}
     
