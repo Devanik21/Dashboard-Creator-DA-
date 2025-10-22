@@ -125,7 +125,7 @@ def set_page_background_and_style(file_path):
     textarea, input {{
         background: transparent !important;
         border: none !important;
-        color: #2D3748 !important; /* Dark text for bright BG */
+        color: #E2E8F0 !important;
         transition: all 0.3s ease !important;
         box-shadow: none !important;
     }}
@@ -135,14 +135,14 @@ def set_page_background_and_style(file_path):
         background: transparent !important;
         border: none !important;
         box-shadow: none !important;
-        color: #1A202C !important; /* Darker on focus/hover */
+        color: #FFFFFF !important; /* Brighter on focus/hover */
     }}
     
     /* Pure transparent buttons - no borders */
     button {{
         background: transparent !important;
         border: none !important;
-        color: #2D3748 !important; /* Dark text for bright BG */
+        color: #E2E8F0 !important;
         transition: all 0.3s ease !important;
         box-shadow: none !important;
     }}
@@ -151,15 +151,14 @@ def set_page_background_and_style(file_path):
         background: transparent !important;
         border: none !important;
         box-shadow: none !important;
-        color: #1A202C !important; /* Darker on hover */
+        color: #FFFFFF !important; /* Brighter on hover */
         transform: none !important;
     }}
     
     /* App-wide text styling */
     /* The div selector is modified with :not() to exclude icon containers, fixing a bug where icons were replaced by text. */
     body, h1, h2, h3, h4, h5, h6, p, label, .stMarkdown {{
-        color: #2D3748 !important; /* Dark text for bright BG */
-        text-shadow: 0px 1px 3px rgba(255, 255, 255, 0.7); /* White shadow for readability */
+        color: #E2E8F0 !important;
         font-family: 'Inter', -apple-system, system-ui, sans-serif !important;
         font-size: 1.02rem; /* Slightly larger base font size for readability */
         line-height: 1.6;
@@ -173,11 +172,11 @@ def set_page_background_and_style(file_path):
     
     h1 {{
         font-size: 3rem !important;
-        color: #1A202C !important; /* Make main title stand out (dark) */
+        color: #FFFFFF !important; /* Make main title stand out */
     }}
     
     .subtitle {{
-        color: rgba(45, 55, 72, 0.8); /* Subtler version of main text color (dark) */
+        color: rgba(226, 232, 240, 0.8); /* Subtler version of main text color */
         font-size: 1.1rem; /* Keep subtitle size */
         margin-top: -10px;
         letter-spacing: 3px;
@@ -206,14 +205,14 @@ def set_page_background_and_style(file_path):
         padding: 4px 10px;
         margin: 3px;
         font-size: 0.9rem; /* Slightly larger badge text */
-        color: rgba(45, 55, 72, 0.8); /* Dark text for bright BG */
+        color: rgba(226, 232, 240, 0.8);
         transition: all 0.3s ease;
     }}
     
     .file-badge:hover {{
         background: transparent;
         border: none;
-        color: #1A202C; /* Darker on hover */
+        color: #FFFFFF;
     }}
     
     /* Data tool buttons - no special styling */
@@ -246,14 +245,14 @@ def set_page_background_and_style(file_path):
     
     /* Placeholder text */
     ::placeholder {{
-        color: rgba(45, 55, 72, 0.5) !important; /* Dark placeholder */
+        color: rgba(226, 232, 240, 0.5) !important;
     }}
     
     /* Selectbox - transparent */
     div[data-baseweb="select"] > div {{
         background: transparent !important;
         border: none !important;
-        color: #2D3748 !important; /* Ensure selectbox text is correct color (dark) */
+        color: #E2E8F0 !important; /* Ensure selectbox text is correct color */
     }}
     
     div[data-baseweb="select"]:hover > div {{
@@ -265,7 +264,7 @@ def set_page_background_and_style(file_path):
     /* Footer */
     .footer {{
         font-size: 0.9rem;
-        color: rgba(45, 55, 72, 0.7); /* Dark text for bright BG */
+        color: rgba(226, 232, 240, 0.7);
         text-align: center;
         font-weight: 300;
         letter-spacing: 1px;
@@ -291,13 +290,13 @@ def set_page_background_and_style(file_path):
     
     /* Caption text */
     .stCaptionContainer, small {{
-        color: rgba(45, 55, 72, 0.7) !important; /* Dark text for bright BG */
+        color: rgba(226, 232, 240, 0.7) !important;
         font-weight: 300;
     }}
     
     /* File uploader */
     .stFileUploader label {{
-        color: #2D3748 !important; /* Dark text for bright BG */
+        color: #E2E8F0 !important;
     }}
     
     .stFileUploader section {{
