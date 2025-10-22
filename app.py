@@ -88,6 +88,17 @@ def set_page_background_and_style(file_path):
         background-repeat: no-repeat;
         background-attachment: fixed;
     }}
+
+    /* --- Universal Text Readability Enhancement --- */
+    /* Apply a subtle shadow to all text elements to ensure they are readable against the background image. */
+    body, .stApp * {{
+        text-shadow: 0 1px 3px rgba(0,0,0,0.7) !important;
+    }}
+
+    /* Remove shadow from icons and other non-text elements where it's not desired. */
+    i, svg, [data-testid="stIcon"], [data-testid="stIcon"] * {{
+        text-shadow: none !important;
+    }}
     
     /* 100% Pure Transparency - No boxes, no borders */
     [data-testid="stHeader"],
@@ -127,7 +138,6 @@ def set_page_background_and_style(file_path):
         border: none !important;
         color: #F0F2F5 !important; /* Brighter text for inputs */
         transition: all 0.3s ease !important;
-        text-shadow: 0 1px 2px rgba(0,0,0,0.5); /* Readability on image */
         box-shadow: none !important;
     }}
     
@@ -145,7 +155,6 @@ def set_page_background_and_style(file_path):
         border: none !important;
         color: #F0F2F5 !important; /* Brighter text for buttons */
         transition: all 0.3s ease !important;
-        text-shadow: 0 1px 2px rgba(0,0,0,0.5); /* Readability on image */
         box-shadow: none !important;
     }}
     
@@ -164,7 +173,6 @@ def set_page_background_and_style(file_path):
         font-family: 'Inter', -apple-system, system-ui, sans-serif !important;
         font-size: 1rem; /* Standard base font size for readability */
         line-height: 1.6;
-        text-shadow: 0 1px 3px rgba(0,0,0,0.6); /* Universal text shadow for readability */
     }}
     
     h1, h2, h3 {{
@@ -251,6 +259,7 @@ def set_page_background_and_style(file_path):
     /* Placeholder text */
     ::placeholder {{
         color: rgba(240, 242, 245, 0.5) !important; /* Adjusted for new base color */
+        text-shadow: 0 1px 3px rgba(0,0,0,0.7) !important; /* Ensure placeholder has shadow */
     }}
     
     /* Selectbox - transparent */
