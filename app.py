@@ -309,7 +309,7 @@ def set_page_background_and_style(file_path):
     st.markdown(css_text, unsafe_allow_html=True)
 
 # --- APP LAYOUT ---
-set_page_background_and_style('bg_1.jpg')
+set_page_background_and_style('d3.jpg')
 
 # --- PASSWORD PROTECTION ---
 def check_password():
