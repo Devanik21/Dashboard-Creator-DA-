@@ -157,7 +157,7 @@ def set_page_background_and_style(file_path):
     
     /* App-wide text styling */
     /* The div selector is modified with :not() to exclude icon containers, fixing a bug where icons were replaced by text. */
-    body, h1, h2, h3, h4, h5, h6, p, div:not([data-testid="stExpanderIcon"]):not([data-testid="stSidebarNav"]), span, label, .stMarkdown {{
+    body, h1, h2, h3, h4, h5, h6, p, label, .stMarkdown {{
         color: #E2E8F0 !important;
         font-family: 'Inter', -apple-system, system-ui, sans-serif !important;
         font-size: 1.02rem; /* Slightly larger base font size for readability */
