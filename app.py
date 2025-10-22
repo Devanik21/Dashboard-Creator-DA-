@@ -78,7 +78,7 @@ def check_password():
 
     # If max attempts reached, lock the app
     if st.session_state.password_attempts >= 3:
-        st.warning("🚨 Too many incorrect attempts. Access denied. Please refresh the page to try again.")
+        st.warning("🚨 Too many incorrect attempts. Access denied.")
         st.stop()
 
     # Show password input form
