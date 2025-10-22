@@ -63,6 +63,38 @@ from prophet.plot import plot_plotly as prophet_plot_plotly, plot_components_plo
 from sklearn.ensemble import GradientBoostingClassifier
 st.set_page_config(layout="wide", page_title="Advanced Dashboard Creator", page_icon="📊")
 
+# --- BACKGROUND IMAGE ---
+@st.cache_data
+def get_base64_of_bin_file(bin_file):
+    """Reads a binary file and returns its base64 encoded string."""
+    with open(bin_file, 'rb') as f:
+        data = f.read()
+    return base64.b64encode(data).decode()
+
+def set_bg_from_local(image_file):
+    """Sets a background image for the app and makes the sidebar transparent."""
+    try:
+        bin_str = get_base64_of_bin_file(image_file)
+        page_bg_img = f'''
+        <style>
+        [data-testid="stAppViewContainer"] > .main {{
+            background-image: url("data:image/jpeg;base64,{bin_str}");
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+        }}
+        [data-testid="stSidebar"] > div:first-child {{
+            background-color: transparent;
+        }}
+        </style>
+        '''
+        st.markdown(page_bg_img, unsafe_allow_html=True)
+    except FileNotFoundError:
+        st.warning(f"Background image '{image_file}' not found. Please ensure it's in the correct directory.")
+
+set_bg_from_local('bg_1.jpg')
+
 # --- PASSWORD PROTECTION ---
 def check_password():
     """Returns `True` if the user has entered the correct password."""
