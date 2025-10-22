@@ -348,8 +348,8 @@ def check_password():
 
 check_password()
 
-with st.sidebar:
-    st.image("d2.jpg", caption="From rows to revelations.", use_container_width=True)
+#with st.sidebar:
+ #   st.image("d2.jpg", caption="From rows to revelations.", use_container_width=True)
 
 # Sidebar configuration
 st.sidebar.header("🛠️ Dashboard Controls & Options")
