@@ -312,7 +312,7 @@ def set_page_background_and_style(file_path):
     st.markdown(css_text, unsafe_allow_html=True)
 
 # --- APP LAYOUT ---
-set_page_background_and_style('bg_1.jpg')
+set_page_background_and_style('d3.jpg')
 
 # --- PASSWORD PROTECTION ---
 def check_password():
@@ -351,8 +351,8 @@ def check_password():
 
 check_password()
 
-with st.sidebar:
-    st.image("d2.jpg", caption="From rows to revelations.", use_container_width=True)
+#with st.sidebar:
+ #   st.image("d2.jpg", caption="From rows to revelations.", use_container_width=True)
 
 # Sidebar configuration
 st.sidebar.header("🛠️ Dashboard Controls & Options")
@@ -407,7 +407,7 @@ except Exception as e:
 
 # Main title with metrics
 st.title("Advanced Data Explorer & Visualizer")
-st.image("d3.jpg", caption="Made for Analysts. Loved by Scientists.", use_container_width=True)
+#st.image("d3.jpg", caption="Made for Analysts. Loved by Scientists.", use_container_width=True)
 st.markdown("### 🔮 Upload your data to unlock insights and visualizations!")
 
 # NEW FEATURE 2: Multiple file upload support
@@ -5079,8 +5079,5 @@ with footer_col2: st.info(f"🎨 Theme: {selected_theme}")
 with footer_col3: st.info(f"📚 Datasets: {len(datasets) if uploaded_files and datasets else 0}")
 
 
-with st.sidebar:
-    st.image("d1.jpg",caption="Decode with design", use_container_width=True)
 
 
-st.image("d4.jpg", caption="Data Analysis meets AI meets Elegance.", use_container_width=True)
