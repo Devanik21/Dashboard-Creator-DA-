@@ -313,7 +313,7 @@ def set_page_background_and_style(file_path):
     st.markdown(css_text, unsafe_allow_html=True)
 
 # --- APP LAYOUT ---
-set_page_background_and_style('Gemini_Generated_Image_phsbymphsbymphsb.png')
+set_page_background_and_style('Gemini_Generated_Image_phsbymphsbymphsb (1).png')
 
 # --- PASSWORD PROTECTION ---
 def check_password():
