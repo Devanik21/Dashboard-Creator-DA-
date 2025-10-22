@@ -63,6 +63,43 @@ from prophet.plot import plot_plotly as prophet_plot_plotly, plot_components_plo
 from sklearn.ensemble import GradientBoostingClassifier
 st.set_page_config(layout="wide", page_title="Advanced Dashboard Creator", page_icon="📊")
 
+# --- PASSWORD PROTECTION ---
+def check_password():
+    """Returns `True` if the user has entered the correct password."""
+
+    # Initialize session state if it doesn't exist
+    if "password_correct" not in st.session_state:
+        st.session_state.password_correct = False
+        st.session_state.password_attempts = 0
+
+    # If password is correct, we're done.
+    if st.session_state.password_correct:
+        return True
+
+    # If max attempts reached, lock the app
+    if st.session_state.password_attempts >= 3:
+        st.warning("🚨 Too many incorrect attempts. Access denied. Please refresh the page to try again.")
+        st.stop()
+
+    # Show password input form
+    st.title("🔐 Secure Access")
+    st.info("Please enter the password to access the Advanced Data Explorer.")
+    with st.form("password_form"):
+        password = st.text_input("Password", type="password")
+        submitted = st.form_submit_button("Enter")
+
+        if submitted:
+            if password == st.secrets["app_password"]:
+                st.session_state.password_correct = True
+                st.rerun()
+            else:
+                st.session_state.password_attempts += 1
+                st.error(f"Incorrect password. You have {3 - st.session_state.password_attempts} attempts left.")
+                st.rerun()
+    st.stop()
+
+check_password()
+
 with st.sidebar:
     st.image("d2.jpg", caption="From rows to revelations.", use_container_width=True)
 
@@ -223,12 +260,16 @@ def get_common_columns(datasets_dict, col_type='all'):
     return []
 
 st.sidebar.header("🪄 AI-Powered Assistance")
-gemini_api_key = st.sidebar.text_input("Gemini API Key", type="password")
-if gemini_api_key:
-    try:
-        genai.configure(api_key=gemini_api_key)
-    except Exception as e:
-        st.sidebar.error(f"API Error: {str(e)}")
+gemini_api_key = None # Initialize to handle cases where it's not found
+try:
+    # Load Gemini API key from Streamlit secrets
+    gemini_api_key = st.secrets["gemini_api_key"]
+    genai.configure(api_key=gemini_api_key)
+    st.sidebar.success("Gemini API key loaded from secrets.")
+except KeyError:
+    st.sidebar.warning("Gemini API key not found in secrets. AI features will be disabled.")
+except Exception as e:
+    st.sidebar.error(f"API Error: {str(e)}")
 
 # Main title with metrics
 st.title("Advanced Data Explorer & Visualizer")
